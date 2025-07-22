@@ -1,0 +1,32 @@
+[submodule "griffity_doc_templates"]
+	path = griffity_doc_templates
+	url = ../griffity_doc_templates.git
+	branch = rc/odoo-tom-20-03-2025
+[submodule "oca-account-financial-tools"]
+	path = oca-account-financial-tools
+	url = ../oca-account-financial-tools.git
+	branch = rc/odoo-tom-20-03-2025
+[submodule "oca-account-reconcile"]
+	path = oca-account-reconcile
+	url = ../oca-account-reconcile.git
+	branch = 17.0
+[submodule "oca-bank-payment"]
+	path = oca-bank-payment
+	url = ../oca-bank-payment.git
+	branch = rc/odoo-tom-2-0-03-2025
+[submodule "oca-partner-contact"]
+	path = oca-partner-contact
+	url = ../oca-partner-contact.git
+	branch = rc/odoo-tom-2-0-03-2025
+[submodule "oca_knowledge"]
+	path = oca_knowledge
+	url = ../oca_knowledge.git
+	branch = rc/odoo-tom-2-0-03-2025
+[submodule "odoo-tom-jobcontrol"]
+	path = odoo-tom-jobcontrol
+	url = ../odoo-tom-jobcontrol.git
+	branch = rc/next-version
+[submodule "prt_mail_messages"]
+	path = prt_mail_messages
+	url = ../prt_mail_messages.git
+	branch = rc/next-version
