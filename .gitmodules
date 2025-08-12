@@ -30,3 +30,7 @@
 	path = prt_mail_messages
 	url = ../prt_mail_messages.git
 	branch = rc/next-version
+[submodule "oca_web"]
+	path = oca_web
+	url = ../oca_web.git
+	branch = rc/next-version
