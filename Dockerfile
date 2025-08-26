@@ -14,6 +14,7 @@ COPY oca_knowledge/document_url ${ADDON_PATH}/document_url
 COPY oca_web/web_remember_tree_column_width ${ADDON_PATH}/web_remember_tree_column_width
 COPY oca_web/web_no_bubble ${ADDON_PATH}/web_no_bubble
 COPY oca_web/web_save_discard_button ${ADDON_PATH}/web_save_discard_button
+COPY oca_web/web_chatter_position ${ADDON_PATH}/web_chatter_position
 # copy Mikrowerk addons
 COPY odoo-tom-jobcontrol/jobcontrol ${ADDON_PATH}/jobcontrol
 COPY odoo-tom-jobcontrol/mikrowerk_account_payment ${ADDON_PATH}/mikrowerk_account_payment
