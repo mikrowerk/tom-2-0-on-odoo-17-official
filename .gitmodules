@@ -34,3 +34,7 @@
 	path = oca_web
 	url = ../oca_web.git
 	branch = rc/next-version
+[submodule "odoo-tom-third-party-addons"]
+	path = odoo-tom-third-party-addons
+	url = ../odoo-tom-third-party-addons.git
+	branch = rc/next-version

@@ -15,7 +15,9 @@ COPY oca_web/web_remember_tree_column_width ${ADDON_PATH}/web_remember_tree_colu
 COPY oca_web/web_no_bubble ${ADDON_PATH}/web_no_bubble
 COPY oca_web/web_save_discard_button ${ADDON_PATH}/web_save_discard_button
 COPY oca_web/web_chatter_position ${ADDON_PATH}/web_chatter_position
-COPY oca_web/web_save_discard_button ${ADDON_PATH}/web_save_discard_button
+# copy third party addons
+COPY odoo-tom-third-party-addons/copy_section_with_products ${ADDON_PATH}/copy_section_with_products
+COPY odoo-tom-third-party-addons/section_wise_subtotal ${ADDON_PATH}/section_wise_subtotal
 # copy Mikrowerk addons
 COPY odoo-tom-jobcontrol/jobcontrol ${ADDON_PATH}/jobcontrol
 COPY odoo-tom-jobcontrol/mikrowerk_account_payment ${ADDON_PATH}/mikrowerk_account_payment
