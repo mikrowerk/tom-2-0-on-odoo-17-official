@@ -38,3 +38,11 @@
 	path = odoo-tom-third-party-addons
 	url = ../odoo-tom-third-party-addons.git
 	branch = rc/next-version
+[submodule "oca-purchase-workflow"]
+	path = oca-purchase-workflow
+	url = ../oca-purchase-workflow.git
+	branch = 17.0
+[submodule "oca-social"]
+	path = oca-social
+	url = ../../OCA/social.git
+	branch = 17.0
