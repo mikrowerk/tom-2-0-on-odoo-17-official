@@ -1,0 +1,70 @@
+# This workflow will upload a Python Package to PyPI when a release is created
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Build odoo-tom-2-0-image on top of odoo official image
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'releases/**'
+      - 'rc/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-push-tom-2-0-image:
+    runs-on: ubuntu-latest
+    environment: github-build
+
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository and submodules
+        id: checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          token: ${{ secrets.GIT_HUB_TOKEN }}
+
+      - id: commit
+        uses: prompt/actions-commit-hash@v3
+
+
+      - name: List directories
+        env:
+          COMMIT_HASH: ${{ steps.commit.outputs.short }}
+        run: |
+          ls -al .
+          echo "---------- commit hash -------------"
+          echo "$COMMIT_HASH"
+          echo "------------------------------------"
+
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GIT_HUB_TOKEN }}
+
+      - name: Build and push Docker images
+        id: push
+        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/mikrowerk/tom-2-0-odoo-17-image:latest
+            ghcr.io/mikrowerk/tom-2-0-odoo-17-image:rc-03-2025
+            ghcr.io/mikrowerk/tom-2-0-odoo-17-image:${{ steps.commit.outputs.short }}
