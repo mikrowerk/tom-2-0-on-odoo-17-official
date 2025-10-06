@@ -15,6 +15,7 @@ COPY oca_web/web_remember_tree_column_width ${ADDON_PATH}/web_remember_tree_colu
 COPY oca_web/web_no_bubble ${ADDON_PATH}/web_no_bubble
 COPY oca_web/web_save_discard_button ${ADDON_PATH}/web_save_discard_button
 COPY oca_web/web_chatter_position ${ADDON_PATH}/web_chatter_position
+COPY oca_web/web_dialog_size ${ADDON_PATH}/web_dialog_size
 COPY oca-purchase-workflow/purchase_mass_mail ${ADDON_PATH}/purchase_mass_mail
 COPY oca-social/mail_template_substitute ${ADDON_PATH}/mail_template_substitute
 COPY oca-social/mail_optional_autofollow ${ADDON_PATH}/mail_optional_autofollow
