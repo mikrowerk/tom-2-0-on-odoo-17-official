@@ -1,1 +1,3 @@
-mikrowerk-edi-invoicing >= 0.6.4
+mikrowerk-edi-invoicing >= 0.6.5
+google-genai
+thefuzz
