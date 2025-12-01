@@ -25,8 +25,8 @@ COPY odoo-tom-third-party-addons/section_wise_subtotal ${ADDON_PATH}/section_wis
 # copy Mikrowerk addons
 COPY odoo-tom-jobcontrol/jobcontrol ${ADDON_PATH}/jobcontrol
 COPY odoo-tom-jobcontrol/mikrowerk_account_payment ${ADDON_PATH}/mikrowerk_account_payment
-COPY odoo-tom-jobcontrol/mikrowerk_email_processing ${ADDON_PATH}/mikrowerk_email_processing
-COPY odoo-tom-jobcontrol/mikrowerk_e_invoices ${ADDON_PATH}/mikrowerk_e_invoices
+# COPY odoo-tom-jobcontrol/mikrowerk_email_processing ${ADDON_PATH}/mikrowerk_email_processing
+COPY odoo-tom-jobcontrol/mikrowerk_edi_documents ${ADDON_PATH}/mikrowerk_edi_documents
 COPY odoo-tom-jobcontrol/mikrowerk_eventmanagement ${ADDON_PATH}/mikrowerk_eventmanagement
 COPY odoo-tom-jobcontrol/mikrowerk_tom_import ${ADDON_PATH}/mikrowerk_tom_import
 
