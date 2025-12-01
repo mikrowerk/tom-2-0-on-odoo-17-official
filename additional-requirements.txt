@@ -1,1 +1,1 @@
-mikrowerk-edi-invoicing
+mikrowerk-edi-invoicing >= 0.6.4
