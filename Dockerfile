@@ -33,7 +33,9 @@ COPY odoo-tom-jobcontrol/mikrowerk_tom_import ${ADDON_PATH}/mikrowerk_tom_import
 # Copy custom addons
 COPY griffity_doc_templates/griffity_templates ${ADDON_PATH}/griffity_templates
 
+COPY additional-requirements.txt /tmp/additional-requirements.txt
+
 # install addition requirements
-RUN pip install -r additional-requirements.txt && \
+RUN pip install -r /tmp/additional-requirements.txt && \
     pip list
 
