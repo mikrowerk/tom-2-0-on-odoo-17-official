@@ -1,7 +1,8 @@
 # Copyright Gammadata GmbH. All Rights Reserved.
 # SPDX-License-Identifier: APACHE-2.0
 
-FROM ghcr.io/mikrowerk/odoo-17-official-image:462d8a8
+FROM ghcr.io/mikrowerk/odoo-17-official-image:475e4c4
+
 
 ARG ADDON_PATH="/mnt/extra-addons"
 
@@ -35,7 +36,11 @@ COPY griffity_doc_templates/griffity_templates ${ADDON_PATH}/griffity_templates
 
 COPY additional-requirements.txt /tmp/additional-requirements.txt
 
-# install addition requirements
-RUN pip install -r /tmp/additional-requirements.txt && \
-    pip list
+RUN pip3 install --upgrade pip && \
+    echo "------------- python module lib before install --------------" && \
+    pip3 list
+RUN pip3 install -r /tmp/additional-requirements.txt && \
+    echo "------------- python module lib after install --------------" && \
+    pip3 list && \
+    which pip3
 
