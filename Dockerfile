@@ -42,7 +42,7 @@ RUN pip3 install --upgrade pip && \
 RUN pip3 install -r /tmp/additional-requirements.txt && \
     echo "------------- python module lib after install --------------" && \
     pip3 list && \
-    which pip3 \
+    which pip3
 RUN pip3 freeze
 
 
