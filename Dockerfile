@@ -1,7 +1,7 @@
 # Copyright Gammadata GmbH. All Rights Reserved.
 # SPDX-License-Identifier: APACHE-2.0
 
-FROM ghcr.io/mikrowerk/odoo-17-official-image:475e4c4
+FROM ghcr.io/mikrowerk/odoo-17-official-image:9d3af5c
 
 
 ARG ADDON_PATH="/mnt/extra-addons"
