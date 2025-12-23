@@ -33,9 +33,10 @@ COPY odoo-tom-jobcontrol/mikrowerk_tom_import ${ADDON_PATH}/mikrowerk_tom_import
 # Copy custom addons
 COPY griffity_doc_templates/griffity_templates ${ADDON_PATH}/griffity_templates
 USER root
-RUN pip3 install schwifty --upgrade
-RUN echo "------------- python module lib before install --------------" && \
-    which pip3 && \
+COPY additional-requirements.txt /tmp/additional-requirements.txt
+RUN pip3 install -r /tmp/additional-requirements.txt
+RUN which pip3 && \
+    echo "------------- python module lib before install --------------" && \
     pip3 list
 
 USER odoo

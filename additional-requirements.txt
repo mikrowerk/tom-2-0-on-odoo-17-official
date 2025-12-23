@@ -1,8 +1,11 @@
+anyio
 factur-x==3.6
 pypdf>=6.1.3
-PyPDF2==2.12.1
 lxml[html_clean]>=6.0.2
-schwifty==2025.1.0
+schwifty==2025.9.0
+Unidecode
+rlPyCairo
 mikrowerk_edi_invoicing>=0.6.6
 google-genai
 thefuzz
+
