@@ -1,7 +1,7 @@
 # Copyright Gammadata GmbH. All Rights Reserved.
 # SPDX-License-Identifier: APACHE-2.0
 
-FROM ghcr.io/mikrowerk/odoo-17-official-image:74cc62b
+FROM ghcr.io/mikrowerk/odoo-17-official-image:8ccd030
 
 ARG ADDON_PATH="/mnt/extra-addons"
 
@@ -33,18 +33,17 @@ COPY odoo-tom-jobcontrol/mikrowerk_tom_import ${ADDON_PATH}/mikrowerk_tom_import
 # Copy custom addons
 COPY griffity_doc_templates/griffity_templates ${ADDON_PATH}/griffity_templates
 
-COPY additional-requirements.txt /tmp/additional-requirements.txt
-USER root
-RUN pip3 install --upgrade pip && \
-    echo "------------- python module lib before install --------------" && \
-    pip3 list
-RUN pip3 install -r /tmp/additional-requirements.txt && \
-    echo "------------- python module lib after install --------------" && \
-    pip3 list && \
+RUN echo "------------- python module lib before install --------------" && \
     which pip3 && \
-    pip3 freeze
+    pip3 list
 
 USER odoo
+COPY additional-requirements.txt /tmp/additional-requirements.txt
+RUN pip3 install --user -r /tmp/additional-requirements.txt && \
+    echo "------------- python module lib after install --------------" && \
+    pip3 list
+
+
 
 
 
