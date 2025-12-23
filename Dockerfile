@@ -5,6 +5,7 @@ FROM ghcr.io/mikrowerk/odoo-17-official-image:96533ad
 
 
 ARG ADDON_PATH="/mnt/extra-addons"
+ARG ODOO_ID=1111
 
 # copy OCA add-ons
 COPY oca-account-financial-tools ${ADDON_PATH}
@@ -45,6 +46,11 @@ RUN pip3 install -r /tmp/additional-requirements.txt && \
     which pip3 && \
     pip3 freeze
 
+RUN groupadd -g ${ODOO_ID} odoo && \
+    useradd -u ${ODOO_ID} -g odoo -m -s /bin/false odoo
+
 USER odoo
+
+
 
 
