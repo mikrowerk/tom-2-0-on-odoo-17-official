@@ -1,10 +1,9 @@
 # Copyright Gammadata GmbH. All Rights Reserved.
 # SPDX-License-Identifier: APACHE-2.0
 
-FROM ghcr.io/mikrowerk/odoo-17-official-image:462d8a8
+FROM ghcr.io/mikrowerk/odoo-17-official-image:74cc62b
 
 ARG ADDON_PATH="/mnt/extra-addons"
-ARG ODOO_ID=1111
 
 # copy OCA add-ons
 COPY oca-account-financial-tools ${ADDON_PATH}
@@ -44,9 +43,6 @@ RUN pip3 install -r /tmp/additional-requirements.txt && \
     pip3 list && \
     which pip3 && \
     pip3 freeze
-
-RUN groupadd -g ${ODOO_ID} odoo && \
-    useradd -u ${ODOO_ID} -g odoo -m -s /bin/false odoo
 
 USER odoo
 
