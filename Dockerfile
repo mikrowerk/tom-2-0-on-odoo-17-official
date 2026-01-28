@@ -35,6 +35,8 @@ COPY griffity_doc_templates/griffity_templates ${ADDON_PATH}/griffity_templates
 USER root
 COPY additional-requirements.txt /tmp/additional-requirements.txt
 RUN pip3 install -r /tmp/additional-requirements.txt
+RUN pip3 install --upgrade --break-system-packages pyOpenSSL cryptography
+
 RUN which pip3 && \
     echo "------------- python module lib before install --------------" && \
     pip3 list
