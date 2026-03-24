@@ -11,7 +11,7 @@ name: Build odoo-tom-2-0-image on top of odoo official image
 on:
   push:
     branches:
-      - 'main'
+      - 'main*'
       - 'releases/**'
       - 'rc/**'
 
