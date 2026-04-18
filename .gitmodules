@@ -38,7 +38,7 @@
 [submodule "odoo-tom-jobcontrol"]
 	path = odoo-tom-jobcontrol
 	url = ../odoo-tom-jobcontrol.git
-	branch = main-17
+	branch = releases/17-candidate
 [submodule "griffity_doc_templates"]
 	path = griffity_doc_templates
 	url = ../griffity_doc_templates.git
