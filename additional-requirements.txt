@@ -8,4 +8,12 @@ rlPyCairo
 mikrowerk_edi_invoicing>=0.6.6
 google-genai
 thefuzz
+# E-Mail-Bridge client lib, pinned to commit until a release tag exists (TOM-97)
+# tarball instead of git URL, no git needed in the image
+email_bridge_client @ https://github.com/mikrowerk/e-mail-bridge-client-libs/archive/1182c13.tar.gz#subdirectory=python
 
+# Markdown -> HTML rendering of bridge summaries (TOM-97)
+markdown==3.10.3
+
+# OCA migration scripts (oca-* addons) import this during -u module updates
+openupgradelib

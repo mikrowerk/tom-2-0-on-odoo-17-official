@@ -15,6 +15,8 @@ COPY oca_web/web_remember_tree_column_width ${ADDON_PATH}/web_remember_tree_colu
 COPY oca_web/web_no_bubble ${ADDON_PATH}/web_no_bubble
 COPY oca_web/web_save_discard_button ${ADDON_PATH}/web_save_discard_button
 COPY oca_web/web_chatter_position ${ADDON_PATH}/web_chatter_position
+# web_dialog_size: superseded by mikrowerk_widgets (TOM-71); kept in the image until it is
+# uninstalled in production, then remove this line
 COPY oca_web/web_dialog_size ${ADDON_PATH}/web_dialog_size
 COPY oca-purchase-workflow/purchase_mass_mail ${ADDON_PATH}/purchase_mass_mail
 COPY oca-social/mail_template_substitute ${ADDON_PATH}/mail_template_substitute
@@ -22,13 +24,9 @@ COPY oca-social/mail_optional_autofollow ${ADDON_PATH}/mail_optional_autofollow
 # copy third party addons
 COPY odoo-tom-third-party-addons/copy_section_with_products ${ADDON_PATH}/copy_section_with_products
 COPY odoo-tom-third-party-addons/section_wise_subtotal ${ADDON_PATH}/section_wise_subtotal
-# copy Mikrowerk addons
-COPY odoo-tom-jobcontrol/jobcontrol ${ADDON_PATH}/jobcontrol
-COPY odoo-tom-jobcontrol/mikrowerk_account_payment ${ADDON_PATH}/mikrowerk_account_payment
-# COPY odoo-tom-jobcontrol/mikrowerk_email_processing ${ADDON_PATH}/mikrowerk_email_processing
-COPY odoo-tom-jobcontrol/mikrowerk_edi_documents ${ADDON_PATH}/mikrowerk_edi_documents
-COPY odoo-tom-jobcontrol/mikrowerk_eventmanagement ${ADDON_PATH}/mikrowerk_eventmanagement
-COPY odoo-tom-jobcontrol/mikrowerk_tom_import ${ADDON_PATH}/mikrowerk_tom_import
+# copy Mikrowerk addons: the whole submodule (24 modules since the 2026-09 release);
+# non-module entries (README, .update, .features, .claude) are ignored by Odoo
+COPY odoo-tom-jobcontrol ${ADDON_PATH}
 
 # Copy custom addons
 COPY griffity_doc_templates/griffity_templates ${ADDON_PATH}/griffity_templates
