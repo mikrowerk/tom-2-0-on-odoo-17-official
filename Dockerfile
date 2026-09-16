@@ -61,8 +61,16 @@ COPY --from=gs-build /opt/ghostscript /opt/ghostscript
 RUN ln -sf /opt/ghostscript/bin/gs /usr/local/bin/gs \
     && gs --version > /etc/gs-version \
     && echo "Ghostscript $(cat /etc/gs-version) installed"
+# Ubuntu jammy ships pip 22.0.2, whose build isolation puts the isolated setuptools behind the
+# system dist-packages: pyproject-only packages (email_bridge_client) then build as "UNKNOWN"
+# with the distro setuptools 59.6 -> upgrade pip first (TOM-195). python3-cairo provides pycairo
+# for rlPyCairo without a compiler (pycairo has no Linux wheels).
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-cairo \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install --no-cache-dir --upgrade pip
 COPY additional-requirements.txt /tmp/additional-requirements.txt
-RUN pip3 install -r /tmp/additional-requirements.txt
+RUN pip3 install --no-cache-dir -r /tmp/additional-requirements.txt
 RUN pip3 install "pyOpenSSL~=22.0.0" "cryptography~=38.0.0"
 
 RUN which pip3 && \
