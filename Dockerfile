@@ -25,7 +25,8 @@ RUN curl -fsSL -o /tmp/ghostscript.tar.gz \
     && /opt/ghostscript/bin/gs --version > /opt/ghostscript/VERSION \
     && rm -rf /tmp/gs /tmp/ghostscript.tar.gz
 
-FROM ghcr.io/mikrowerk/tom-2-0-odoo-17-image:6e22768
+# FROM ghcr.io/mikrowerk/tom-2-0-odoo-17-image:6e22768
+FROM ghcr.io/mikrowerk/odoo-17-official-image-amd-64:20260908
 
 ARG ADDON_PATH="/mnt/extra-addons"
 
