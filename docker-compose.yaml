@@ -1,0 +1,102 @@
+  # Copyright Mikrowerk a Gammadata Business.
+  # SPDX-License-Identifier: AGPL-3
+  #
+  # this compose file is suited for the TOM-2.0 application on top of the official odoo-17 image
+  # the file is suited for the update to version 2026-09
+
+  services:
+    postgresql:
+      container_name: postgres_15_15
+      image: "docker.io/bitnami/postgresql:15"
+      ports:
+        - '5432:5432'
+      volumes:
+        - postgres_data:/bitnami/postgresql
+      environment:
+        - POSTGRESQL_POSTGRES_PASSWORD=***
+        - POSTGRESQL_PASSWORD=***
+        - POSTGRESQL_USERNAME=***
+        - POSTGRESQL_DATABASE=tomagency.griffity.de
+    odoo:
+      container_name: odoo_17
+      image: "ghcr.io/mikrowerk/tom-2-0-odoo-17-image:026aae4"
+      restart: unless-stopped
+      ports:
+        - '8069:8069'
+      volumes:
+        - odoo_data:/var/lib/odoo
+        - /opt/odoo/conf:/etc/odoo
+      depends_on:
+        - postgresql
+      environment:
+        - HOST=postgresql
+        - PORT=5432
+        - USER=****
+        - PASSWORD=****
+        - "ODOO_CONFIG_ENCRYPTION_KEY=****"
+
+      command:
+        - odoo
+        - --log-level=info
+        - -d
+        - tomagency.griffity.de
+
+    nginx:
+      container_name: nginx
+      image: "docker.io/nginx:latest"
+      restart: unless-stopped
+      ports:
+        - '80:80'
+        - '443:443'
+      volumes:
+        - /opt/nginx/config:/etc/nginx/conf.d
+        - /opt/certbot:/etc/letsencrypt
+        - certbot_www:/var/www/certbot
+
+    certbot:
+      container_name: certbot
+      image: "docker.io/certbot/certbot"
+      restart: unless-stopped
+      volumes:
+        - /opt/certbot:/etc/letsencrypt
+        - certbot_www:/var/www/certbot
+      entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+
+    backup-service:
+      container_name: backup_manager
+      image: ghcr.io/mikrowerk/tom-backup-image:feature-build-image-for-odoo-17
+      restart: unless-stopped
+      depends_on:
+        - postgresql
+      environment:
+        # S3 Zugangsdaten
+        - AWS_ACCESS_KEY_ID=****
+        - AWS_SECRET_ACCESS_KEY=***
+        - AWS_REGION=eu-central-1
+        - S3_BUCKET=***
+
+        # Verschlüsselung
+        - ENCRYPTION_PASSWORD=****
+
+        # Datenbank
+        - POSTGRES_HOST=postgresql
+        - POSTGRESQL_POSTGRES_PASSWORD=***
+        - POSTGRESQL_PASSWORD=***
+        - POSTGRESQL_USERNAME=postgres
+        - POSTGRESQL_DATABASE=tomagency.griffity.de
+
+        # Pfade & Zeitplan
+        - DATA_DIR=/var/lib/odoo/data/filestore/tomagency.griffity.de
+        - BACKUP_RETENTION=10d
+      volumes:
+        - odoo_data:/var/lib/odoo:ro
+
+  volumes:
+    postgres_data:
+      external: true
+    odoo_data:
+      external: true
+    certbot_www:
+      external: true
+
