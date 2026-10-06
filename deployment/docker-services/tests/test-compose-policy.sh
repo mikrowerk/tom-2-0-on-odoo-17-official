@@ -8,7 +8,8 @@
 #     backup only in db-net, certbot in neither; db-net/ingress-net are external
 #   - no secret literals in the raw YAML (values of *PASSWORD*/*SECRET*/*KEY* are ${...})
 #   - image defaults (POSTGRES_IMAGE, ODOO_IMAGE, BACKUP_IMAGE unset) are the production images,
-#     and none of these variables appears in a .env.example
+#     the postgres host port defaults to 5432 (POSTGRES_HOST_PORT unset), and none of these
+#     test-only variables appears in a .env.example
 #   - nginx image is pinned (no :latest, version >= 1.27.3 for `server ... resolve`)
 set -euo pipefail
 # shellcheck source=lib.sh
@@ -28,12 +29,12 @@ for file in "${FILES[@]}"; do
     rel="${file#"${SERVICES_DIR}/"}"
     echo "== ${rel}"
 
-    if grep -qE '(^|[^_])(POSTGRES_IMAGE|ODOO_IMAGE|BACKUP_IMAGE)=' "${dir}/.env.example" 2>/dev/null; then
+    if grep -qE '(^|[^_])(POSTGRES_IMAGE|ODOO_IMAGE|BACKUP_IMAGE|POSTGRES_HOST_PORT)=' "${dir}/.env.example" 2>/dev/null; then
         fail "${rel}: image override variable in .env.example"
     fi
 
     # effective config with the production image defaults
-    json="$(env -u POSTGRES_IMAGE -u ODOO_IMAGE -u BACKUP_IMAGE \
+    json="$(env -u POSTGRES_IMAGE -u ODOO_IMAGE -u BACKUP_IMAGE -u POSTGRES_HOST_PORT \
         docker compose --env-file "${dir}/.env.example" -f "${file}" config --format json)"
     j() { jq -r "$@" <<<"${json}"; }
 

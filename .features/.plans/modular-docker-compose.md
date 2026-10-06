@@ -207,7 +207,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
 
 ### Phase E – Integration
 
-- [ ] **11. Lokaler Smoke-Test des Gesamtsystems**
+- [x] **11. Lokaler Smoke-Test des Gesamtsystems**
   - Neu: `deployment/docker-services/tests/smoke-test.sh`
     - Bricht ab, falls die Volumes `postgres_data`, `odoo_data` oder `certbot_www` lokal schon existieren. So werden keine fremden Daten angefasst.
     - **Native arm64-Images** (siehe Spec, Abschnitt „Smoke-Test auf Apple Silicon“), über die Image-Variablen in den Test-`.env`-Dateien gesetzt:
@@ -230,6 +230,19 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
     - Aufräumen über `trap`: alle Stacks `down`, Test-Volumes und -Netzwerke entfernen, `tests/.tmp/` löschen.
   - Nachweis: Der Smoke-Test ist grün, das Protokoll wird im Commit-Text kurz zusammengefasst.
   - Commit: `deployment: add end-to-end smoke test`
+  - Ergebnis 2026-10-06: `tests/smoke-test.sh` ist mit 31/31 Prüfungen grün (Exit 0), nativ auf Apple M2 (aarch64). Alle Images sind arm64: `bitnamilegacy/postgresql:15.10.0-debian-12-r2`, `odoo:17.0`, `tom-backup-image:smoke` (lokal gebaut aus `feature/build-image-for-odoo-17`) und `nginx:1.30`. Geprüft wurden:
+    - DB `healthy`, `odoo -i base` funktioniert
+    - nginx läuft ohne Odoo und liefert 502, danach 200 ohne nginx-Neustart
+    - 301-Redirect von HTTP auf HTTPS
+    - Postgres nur an Loopback, Odoo ohne Port
+    - nginx kann `postgresql` nicht auflösen
+    - `pg_dump` mit dem Odoo-DB-User funktioniert, `DATA_DIR` ist read-only
+    - Das Backup bleibt bei `up --force-recreate` und `down` des Odoo-Stacks unberührt
+    - `start-all-services.sh` startet alle 5 Dienste, danach 200
+    - Volumes, Netzwerke und `tests/.tmp` sind danach wieder entfernt.
+  - **Fehler gefunden und behoben** (`database/compose.yaml`): Der Healthcheck `pg_isready -h 127.0.0.1 -p 5432` ohne `-U` endet im Bitnami-Container (UID 1001 ohne passwd-Eintrag) mit `no attempt` (Exit 3), der Container wird nie `healthy`. Behoben mit `-U postgres` (ohne Authentifizierung). Der Fehler wäre in der Produktion genauso aufgetreten und hätte `start-all-services.sh` blockiert.
+  - **Abweichung (trivial):** Der Postgres-Host-Port ist über `POSTGRES_HOST_PORT` (Default 5432) einstellbar, gebunden bleibt er immer an `127.0.0.1`. Grund: Lokal belegt ein anderer Container 5432, der Smoke-Test nutzt deshalb 15432 (`SMOKE_PG_HOST_PORT`). Der Policy-Test prüft, dass der Default `127.0.0.1:5432:5432` ist und dass die Variable in keiner `.env.example` steht.
+  - **Abweichung (trivial):** Der Smoke-Test arbeitet auf einer Kopie der Stacks unter `tests/.tmp`, wie `test-setup.sh`, damit keine `.env`-Dateien in den Stack-Verzeichnissen entstehen. Er verwendet `odoo:17.0` mit `--without-demo=all`. Das Image `tom-backup-image:smoke` bleibt als Build-Cache erhalten.
 
 ### Phase F – Aufräumen und Doku
 

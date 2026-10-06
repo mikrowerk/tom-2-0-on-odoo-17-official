@@ -12,7 +12,8 @@ services:
     image: ${POSTGRES_IMAGE:-ghcr.io/mikrowerk/postgresql:15}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:5432:5432"
+      # loopback only; POSTGRES_HOST_PORT only for local tests where 5432 is taken
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_data:/bitnami/postgresql
     environment:
@@ -21,7 +22,9 @@ services:
       POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD:?set in .env}
       POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE:?set in .env}
     healthcheck:
-      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432"]
+      # -U is required: without it pg_isready looks up the OS user, which does not exist for
+      # uid 1001 in the bitnami image ("no attempt"); no authentication takes place
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "postgres"]
       interval: 10s
       timeout: 5s
       retries: 6
