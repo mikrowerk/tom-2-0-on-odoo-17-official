@@ -239,3 +239,9 @@ Der lokale Smoke-Test soll native arm64-Images verwenden. Geprüft am 2026-10-06
 
 - Entscheidung (Rückfrage beantwortet): Für Odoo wird `odoo:17.0` verwendet. Der Smoke-Test prüft die Infrastruktur (nginx, Netzwerke, Ports, DB, Login, Backup-Zugriff, Entkopplung), nicht die TOM-Module. Das TOM-Basisimage ist vom offiziellen Odoo-Image abgeleitet, deshalb funktionieren dieselben Env-Variablen (`HOST`, `USER`, `PASSWORD`) und dieselbe Konfiguration unter `/etc/odoo`.
 - Damit die Images austauschbar sind, wird jedes Image in den Compose-Files über eine Variable mit dem Produktiv-Image als Default gesetzt (`POSTGRES_IMAGE`, `ODOO_IMAGE`, `BACKUP_IMAGE`). Der Policy-Test prüft, dass die Defaults den Produktiv-Images entsprechen. Auf der VPS bleiben die Variablen ungesetzt.
+
+### 2026-10-06 (Umsetzung, Schritt 2: `ssl-dhparams.pem`)
+
+- Befund: Die versionierte `nginx-conf/ssl-dhparams.pem` ist geschwärzt (`*** redacted ***`), genau wie die Secrets in `docker-compose.yaml` und `odoo.conf`. Die Festlegung „aus `nginx-conf/` übernehmen“ ist damit hinfällig.
+- Entscheidung (Rückfrage beantwortet): `ingress/conf.d/ssl-dhparams.pem` wird gitignored. `setup.sh` erzeugt die Datei mit `openssl dhparam 2048`, aber nur, wenn sie fehlt. Eine vorhandene Datei, z. B. die Kopie aus `/opt/nginx/config`, wird nie überschrieben.
+- Entscheidung (Rückfrage beantwortet): Die Baseline gilt mit diesem Befund als bekannt. `test-nginx-config.sh` testet auf einer Kopie und setzt dort generierte Test-DH-Parameter (ffdhe2048) ein, wenn die Datei fehlt oder kein gültiges PEM ist.

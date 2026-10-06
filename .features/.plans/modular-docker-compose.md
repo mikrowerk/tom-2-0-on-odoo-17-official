@@ -31,6 +31,15 @@ Netzwerke (extern, von `setup.sh` angelegt):
 
 Externe Volumes, unverändert: `postgres_data`, `odoo_data`, `certbot_www`.
 
+## Baseline
+
+**2026-10-06** – `deployment/docker-services/tests/run-baseline.sh` auf `feature/modular-docker-compose` (Stand `4e95afa`):
+- `test-compose-parity.sh --monolith docker-compose.yaml` ergibt 47/47 Prüfungen grün: externe Volumes, Postgres (Image, Volume, Env), Odoo (Image, Command, Volumes, Env), Backup (Image, ro-Volume, Env-Keys aus `backup.sh`, `DATA_DIR`, gleiche DB), nginx (Ports, Mounts), certbot (Entrypoint, Mounts).
+- `test-nginx-config.sh` auf `nginx-conf/` (ohne den Rest `root@u`, mit generierten Test-DH-Parametern) mit `--add-host odoo` ergibt: `nginx: configuration file /etc/nginx/nginx.conf test is successful`.
+- Exit-Code 0, `shellcheck tests/*.sh` sauber.
+- Bekannter Befund, als Ausgangszustand bestätigt: `test-nginx-config.sh deployment/docker-services/ingress --add-host odoo` ist rot mit `duplicate upstream "odoo-backend" in /etc/nginx/conf.d/options-ssl-nginx.conf:2`. Das behebt Schritt 3.
+- Bekannter Befund: `nginx-conf/ssl-dhparams.pem` ist geschwärzt (siehe Spec).
+
 ## Konventionen für alle Schritte
 
 - Jeder Schritt endet mit grünen Tests und **einem** Commit. Commit-Messages sind kurz und auf Englisch, z. B. `deployment: add database stack`.
@@ -50,7 +59,7 @@ Externe Volumes, unverändert: `postgres_data`, `odoo_data`, `certbot_www`.
   - Commit: `docs: add spec and plan for modular docker compose`
   - **Abweichung:** Auf Wunsch (Rückfrage 2026-10-06) committet dieser Schritt auch die bis dahin untracked `CLAUDE.md` und die unveränderten nginx-Rohdateien unter `deployment/docker-services/ingress/`. Dadurch zeigen die Schritte 3 und 13 saubere Diffs. Gearbeitet wird auf dem Branch `feature/modular-docker-compose`, abgezweigt von `releases/17-candidate`.
 
-- [ ] **2. Paritätstest und nginx-Konfigurationstest, grün gegen den Monolithen**
+- [x] **2. Paritätstest und nginx-Konfigurationstest, grün gegen den Monolithen**
   - Neu: `deployment/docker-services/tests/lib.sh` mit Hilfsfunktionen (`fail`, `assert_eq`, `compose_json`).
   - Neu: `deployment/docker-services/tests/test-compose-parity.sh` mit den Modi `--monolith <file>` und `--modular <dir>`. Das Skript erzeugt aus `docker compose config --format json` eine normalisierte Sicht je Dienst und prüft die **fachlichen Invarianten**, die nach der Aufteilung erhalten bleiben müssen:
     - Odoo: Image-Repository `ghcr.io/mikrowerk/tom-2-0-odoo-17-image`, `command` = `odoo --log-level=info -d <db>`, Volumes `odoo_data → /var/lib/odoo` und `<conf> → /etc/odoo`, Env-Keys `HOST`, `PORT`, `USER`, `PASSWORD`, `ODOO_CONFIG_ENCRYPTION_KEY`, `HOST=postgresql`
@@ -66,19 +75,22 @@ Externe Volumes, unverändert: `postgres_data`, `odoo_data`, `certbot_www`.
     - `tests/test-nginx-config.sh deployment/docker-services/ingress --add-host odoo` ist **rot**, weil `options-ssl-nginx.conf` beschädigt ist (siehe Spec). Das ist der erwartete Ausgangsbefund und wird im Testprotokoll des Commits vermerkt.
   - `shellcheck deployment/docker-services/tests/*.sh` läuft sauber.
   - Commit: `deployment: add regression tests for compose parity and nginx config`
+  - **Abweichung:** Neu ist `tests/run-baseline.sh`, das die Baseline reproduzierbar zusammenfasst: Parität des Monolithen plus `nginx -t` auf `nginx-conf/` ohne den Rest `root@u`. Ab Schritt 12 nimmt das Skript automatisch `archive/`.
+  - **Abweichung:** `test-nginx-config.sh` testet auf einer Kopie des Konfigurationsverzeichnisses und setzt dort Test-DH-Parameter ein, wenn `ssl-dhparams.pem` fehlt oder ungültig ist. Grund: Die versionierte Datei ist geschwärzt (siehe Spec, Entscheidung „Schritt 2: `ssl-dhparams.pem`“).
+  - **Abweichung:** `docker compose config` gibt `$$` im certbot-`entrypoint` unverändert escaped aus. Der Erwartungswert im Paritätstest berücksichtigt das.
 
 ### Phase B – Bestehende Konfiguration ins Zielbild überführen
 
 - [ ] **3. nginx-Konfiguration nach `ingress/conf.d/` übernehmen und reparieren (ohne inhaltliche Änderung)**
   - `deployment/docker-services/ingress/{odoo.conf,tomagency.griffity.de.conf,options-ssl-nginx.conf}` nach `ingress/conf.d/` verschieben (`git mv`).
   - `conf.d/options-ssl-nginx.conf` bereinigen: Die kopierte `odoo.conf` und die Shell-Prompt-Zeile am Anfang entfernen, sodass nur der certbot-Inhalt übrig bleibt, mit abschließendem Newline. Abgleich mit `nginx-conf/options-ssl-nginx.conf`, Unterschied darf nur der dortige Rest `root@u` am Ende sein.
-  - `nginx-conf/ssl-dhparams.pem` nach `ingress/conf.d/ssl-dhparams.pem` kopieren.
+  - ~~`nginx-conf/ssl-dhparams.pem` nach `ingress/conf.d/ssl-dhparams.pem` kopieren.~~ Entfällt, die Datei ist geschwärzt. `ingress/conf.d/ssl-dhparams.pem` wird gitignored und von `setup.sh` erzeugt (Schritt 9).
   - Test: `test-nginx-config.sh deployment/docker-services/ingress/conf.d --add-host odoo` ist jetzt grün. `diff -r nginx-conf deployment/docker-services/ingress/conf.d` zeigt nur den Rest `root@u` bzw. das Newline in `options-ssl-nginx.conf`.
   - Commit: `deployment: move nginx config to ingress/conf.d and repair options-ssl-nginx.conf`
 
 - [ ] **4. Repo-Hygiene: `.dockerignore` und `.gitignore`**
   - Neu: `.dockerignore` mit `deployment/`, `.features/`, `archive/`, `**/.env`, `.idea/` und `.git`.
-  - `.gitignore`: `.env` greift bereits in jeder Tiefe (Zeile 139). Ergänzen: `!.env.example` zur Sicherheit, und `deployment/docker-services/tests/.tmp/` für Testartefakte.
+  - `.gitignore`: `.env` greift bereits in jeder Tiefe (Zeile 139). Ergänzen: `!.env.example` zur Sicherheit, `deployment/docker-services/tests/.tmp/` für Testartefakte und `deployment/docker-services/ingress/conf.d/ssl-dhparams.pem`.
   - Neu: `deployment/docker-services/tests/test-repo-hygiene.sh`
     - `git check-ignore` meldet `deployment/docker-services/{database,ingress,odoo-griffity-prod,odoo-griffity-prod/backup}/.env` als ignoriert und `.env.example` als **nicht** ignoriert.
     - Build-Kontext-Probe: `docker build -f - .` mit einem Mini-Dockerfile (`FROM busybox`, `COPY . /ctx`, `RUN` listet `/ctx`). Prüft, dass alle `COPY`-Quellen aus dem echten `Dockerfile` im Kontext vorhanden sind und `deployment/`, `.features/` und `archive/` fehlen.
@@ -154,6 +166,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
     1. Prüft, ob `docker` und `docker compose` v2 vorhanden sind.
     2. Legt die Netzwerke `db-net` und `ingress-net` an, falls sie fehlen.
     3. Legt die Volumes `postgres_data`, `odoo_data` und `certbot_www` an, falls sie fehlen, und meldet dabei deutlich „neu angelegt“, weil das auf der VPS nicht passieren sollte.
+    3a. Erzeugt `ingress/conf.d/ssl-dhparams.pem` mit `openssl dhparam 2048`, falls die Datei fehlt. Eine vorhandene Datei wird nie überschrieben, eine ungültige wird gemeldet (Exit ≠ 0). Die Tests decken beide Fälle ab.
     4. Für jedes Stack-Verzeichnis mit `.env.example` (auch `*/backup`): `.env` muss existieren, jede Variable aus `.env.example` muss gesetzt, nicht leer und nicht `changeme` sein, und die Rechte dürfen nicht weiter als `600` sein (sonst Warnung).
     5. Konsistenzprüfung: `ODOO_DB_NAME`, `ODOO_DB_USER` und `ODOO_DB_PASSWORD` sind in `odoo-*/.env` und `odoo-*/backup/.env` identisch.
     6. Gibt am Ende eine Zusammenfassung aus. Exit-Code ≠ 0, sobald eine Prüfung fehlschlägt.
