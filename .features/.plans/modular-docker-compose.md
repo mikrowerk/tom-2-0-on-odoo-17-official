@@ -137,7 +137,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Commit: `deployment: add odoo-griffity-prod stack`
   - Ergebnis 2026-10-06: `config -q`, Policy-Test und Paritätstest `--modular` (Postgres und Odoo) sind grün. In `.env.example` steht `ODOO_IMAGE_TAG=026aae4`, das ist der aktuelle Produktiv-Tag aus dem Monolithen.
 
-- [ ] **7. Backup-Stack `odoo-griffity-prod/backup`**
+- [x] **7. Backup-Stack `odoo-griffity-prod/backup`**
   - Neu: `deployment/docker-services/odoo-griffity-prod/backup/compose.yaml`
     - `name: odoo-griffity-prod-backup`, Dienst `backup-service`, Image `${BACKUP_IMAGE:-ghcr.io/mikrowerk/tom-backup-image:feature-build-image-for-odoo-17}`, `restart: unless-stopped`, keine Ports, Netzwerk nur `db-net`.
     - Volume `odoo_data:/var/lib/odoo:ro` (external).
@@ -145,6 +145,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Neu: `deployment/docker-services/odoo-griffity-prod/backup/.env.example`
   - Tests: Policy- und Paritätstest um das Backup erweitert. Paritätstest bestätigt, dass `DATA_DIR` und die Env-Keys aus `backup.sh` vollständig sind.
   - Commit: `deployment: add separate backup stack for odoo-griffity-prod`
+  - Ergebnis 2026-10-06: `config -q`, Policy-Test und Paritätstest `--modular` sind grün. Die Parität deckt alle Env-Keys aus `backup.sh` ab, außerdem `DATA_DIR` passend zur DB, dieselbe DB wie Odoo und `odoo_data` read-only. Die Befehle zum Pausieren stehen als Kommentar in `backup/compose.yaml`.
 
 - [ ] **8. `ingress`-Stack mit Alias und robustem Upstream**
   - Neu: `deployment/docker-services/ingress/compose.yaml`

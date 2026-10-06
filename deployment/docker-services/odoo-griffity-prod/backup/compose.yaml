@@ -1,0 +1,47 @@
+# Copyright Mikrowerk a Gammadata Business.
+# SPDX-License-Identifier: AGPL-3
+#
+# Backup of the Odoo instance griffity-prod (DB dump + filestore to S3), a separate project so
+# that it can be paused for an Odoo update without being restarted by `docker compose up` of
+# the Odoo stack:
+#   before the update:  docker compose exec backup-service /app/entrypoint.sh   (manual backup)
+#                       docker compose stop
+#   after a good update: docker compose start
+# The filestore is mirrored with `rclone sync` (no versions), see
+# .features/.specs/backup-filestore-versioning.md.
+
+name: odoo-griffity-prod-backup
+
+services:
+  backup-service:
+    image: ${BACKUP_IMAGE:-ghcr.io/mikrowerk/tom-backup-image:feature-build-image-for-odoo-17}
+    restart: unless-stopped
+    volumes:
+      - odoo_data:/var/lib/odoo:ro
+    environment:
+      # S3
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set in .env}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set in .env}
+      AWS_REGION: ${AWS_REGION:?set in .env}
+      S3_BUCKET: ${S3_BUCKET:?set in .env}
+      # encryption of the uploads
+      ENCRYPTION_PASSWORD: ${ENCRYPTION_PASSWORD:?set in .env}
+      # database: backup.sh dumps as POSTGRESQL_USERNAME with PGPASSWORD=POSTGRESQL_POSTGRES_PASSWORD,
+      # so the Odoo DB user (owner of the database) is used instead of the superuser
+      POSTGRES_HOST: postgresql
+      POSTGRESQL_USERNAME: ${ODOO_DB_USER:?set in .env}
+      POSTGRESQL_POSTGRES_PASSWORD: ${ODOO_DB_PASSWORD:?set in .env}
+      POSTGRESQL_DATABASE: ${ODOO_DB_NAME:?set in .env}
+      # paths & retention
+      DATA_DIR: /var/lib/odoo/data/filestore/${ODOO_DB_NAME:?set in .env}
+      BACKUP_RETENTION: ${BACKUP_RETENTION:?set in .env}
+    networks:
+      - db-net
+
+volumes:
+  odoo_data:
+    external: true
+
+networks:
+  db-net:
+    external: true
