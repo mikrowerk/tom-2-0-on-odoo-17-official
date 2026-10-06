@@ -147,7 +147,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Commit: `deployment: add separate backup stack for odoo-griffity-prod`
   - Ergebnis 2026-10-06: `config -q`, Policy-Test und Paritätstest `--modular` sind grün. Die Parität deckt alle Env-Keys aus `backup.sh` ab, außerdem `DATA_DIR` passend zur DB, dieselbe DB wie Odoo und `odoo_data` read-only. Die Befehle zum Pausieren stehen als Kommentar in `backup/compose.yaml`.
 
-- [ ] **8. `ingress`-Stack mit Alias und robustem Upstream**
+- [x] **8. `ingress`-Stack mit Alias und robustem Upstream**
   - Neu: `deployment/docker-services/ingress/compose.yaml`
     - `name: ingress`
     - `nginx`: Image fest gepinnt auf eine aktuelle Stable-Version ≥ 1.27.3. Die Version wird im Schritt mit `docker run --rm nginx:<tag> nginx -v` ermittelt und im Commit genannt. `restart: unless-stopped`, Ports `80:80` und `443:443`, Volumes `./conf.d:/etc/nginx/conf.d:ro`, `${CERTBOT_DIR:-/opt/certbot}:/etc/letsencrypt:ro` und `certbot_www:/var/www/certbot`, Netzwerk `ingress-net` und Default-Netzwerk.
@@ -165,6 +165,9 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
     - `test-nginx-config.sh deployment/docker-services/ingress/conf.d` **ohne** `--add-host` ist grün. Das beweist, dass nginx auch ohne auflösbaren Odoo-Host startet.
     - Policy- und Paritätstest für alle vier Stacks sind grün.
   - Commit: `deployment: add ingress stack, resolve odoo upstream dynamically`
+  - Ergebnis 2026-10-06: `config -q`, Policy-Test (alle vier Stacks) und Paritätstest `--modular` (alle Dienste) sind grün. `nginx -t` mit `nginx:1.30` ist **ohne** `--add-host` grün. Gegenprobe: Die vorherige `odoo.conf` (`server odoo:8069;`) scheitert ohne `--add-host` mit `host not found in upstream "odoo:8069"`.
+  - **Abweichung (trivial):** Gepinnt wird auf die Stable-Reihe `nginx:1.30` (aktuell 1.30.5), nicht auf eine exakte Patch-Version. So kommen Sicherheits-Patches beim `pull` mit, aber kein Sprung auf die nächste Hauptversion.
+  - **Abweichung (trivial):** nginx hängt nur in `ingress-net`, nicht zusätzlich im Default-Netzwerk. Für die veröffentlichten Ports und den Zugriff auf Odoo reicht `ingress-net`.
 
 ### Phase D – Skripte
 
