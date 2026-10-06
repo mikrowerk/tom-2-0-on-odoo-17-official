@@ -81,12 +81,13 @@ Externe Volumes, unverändert: `postgres_data`, `odoo_data`, `certbot_www`.
 
 ### Phase B – Bestehende Konfiguration ins Zielbild überführen
 
-- [ ] **3. nginx-Konfiguration nach `ingress/conf.d/` übernehmen und reparieren (ohne inhaltliche Änderung)**
+- [x] **3. nginx-Konfiguration nach `ingress/conf.d/` übernehmen und reparieren (ohne inhaltliche Änderung)**
   - `deployment/docker-services/ingress/{odoo.conf,tomagency.griffity.de.conf,options-ssl-nginx.conf}` nach `ingress/conf.d/` verschieben (`git mv`).
   - `conf.d/options-ssl-nginx.conf` bereinigen: Die kopierte `odoo.conf` und die Shell-Prompt-Zeile am Anfang entfernen, sodass nur der certbot-Inhalt übrig bleibt, mit abschließendem Newline. Abgleich mit `nginx-conf/options-ssl-nginx.conf`, Unterschied darf nur der dortige Rest `root@u` am Ende sein.
   - ~~`nginx-conf/ssl-dhparams.pem` nach `ingress/conf.d/ssl-dhparams.pem` kopieren.~~ Entfällt, die Datei ist geschwärzt. `ingress/conf.d/ssl-dhparams.pem` wird gitignored und von `setup.sh` erzeugt (Schritt 9).
   - Test: `test-nginx-config.sh deployment/docker-services/ingress/conf.d --add-host odoo` ist jetzt grün. `diff -r nginx-conf deployment/docker-services/ingress/conf.d` zeigt nur den Rest `root@u` bzw. das Newline in `options-ssl-nginx.conf`.
   - Commit: `deployment: move nginx config to ingress/conf.d and repair options-ssl-nginx.conf`
+  - Ergebnis 2026-10-06: `nginx -t` ist grün. `diff -r` zeigt nur den Rest `root@u` in `nginx-conf/options-ssl-nginx.conf` und die fehlende `ssl-dhparams.pem`. Beides ist gewollt, siehe Abweichung oben.
 
 - [ ] **4. Repo-Hygiene: `.dockerignore` und `.gitignore`**
   - Neu: `.dockerignore` mit `deployment/`, `.features/`, `archive/`, `**/.env`, `.idea/` und `.git`.
