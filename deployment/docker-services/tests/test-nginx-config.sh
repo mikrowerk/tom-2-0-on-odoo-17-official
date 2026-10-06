@@ -7,7 +7,7 @@
 # certificate is generated. --add-host maps a hostname to 127.0.0.1 (needed by configs with a
 # statically resolved upstream such as `server odoo:8069;`).
 # The config is tested on a copy: if `ssl_dhparam` references a file that is missing or no valid
-# PEM (the versioned nginx-conf/ssl-dhparams.pem is redacted, on the VPS setup.sh creates it),
+# PEM (the versioned archive/nginx-conf/ssl-dhparams.pem is redacted, on the VPS setup.sh creates it),
 # test DH parameters (ffdhe2048) are put into the copy.
 # The nginx image is taken from ingress/compose.yaml if it exists, otherwise the image of the
 # monolithic compose file (docker.io/nginx:latest). NGINX_IMAGE overrides both.

@@ -246,12 +246,13 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
 
 ### Phase F – Aufräumen und Doku
 
-- [ ] **12. Altdateien archivieren**
+- [x] **12. Altdateien archivieren**
   - `git mv docker-compose.yaml odoo.conf nginx-conf nginx-conf-new archive/`
   - `tests/test-compose-parity.sh --monolith archive/docker-compose.yaml` ist weiterhin grün, und der Monolith ist damit als Referenz weiter testbar.
   - Prüfen, dass nichts im Repo mehr auf die alten Pfade verweist (`grep -rn` über `Dockerfile`, `.github/`, Skripte). Ausnahme ist `CLAUDE.md`, das in Schritt 13 angepasst wird.
   - `test-repo-hygiene.sh` ist grün, `archive/` liegt nicht im Build-Kontext.
   - Commit: `chore: move monolithic compose and old configs to archive/`
+  - Ergebnis 2026-10-06: Per `git mv` verschoben (8 Dateien). `run-baseline.sh` schaltet automatisch auf `archive/` um und ist grün (Parität des Monolithen, `nginx -t` der Produktivkonfiguration, jetzt mit `nginx:1.30` statt des lokalen `nginx:latest` 1.27.4). `test-repo-hygiene.sh` ist grün, `archive/` liegt nicht im Build-Kontext. `Dockerfile`, `.github/` und die Skripte verweisen nicht mehr auf die alten Pfade, abgesehen von Kommentaren und der bewussten Umschaltung im Baseline-Skript.
 
 - [ ] **13. `CLAUDE.md` an die Spec anpassen**
   - Tabelle „Aufbau“ auf `deployment/docker-services/`, `archive/` und `.dockerignore` umstellen.

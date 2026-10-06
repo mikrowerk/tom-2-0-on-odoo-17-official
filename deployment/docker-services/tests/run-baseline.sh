@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Regression baseline of the monolithic setup (plan step 2), reproducible at any time:
 #   1. parity invariants of the monolithic compose file are green
-#   2. the production nginx config (nginx-conf/, without the copy & paste remainder "root@u" at the
+#   2. the production nginx config ([archive/]nginx-conf/, without the copy & paste remainder "root@u" at the
 #      end of options-ssl-nginx.conf) passes nginx -t
 # The monolith lives in the repo root until it is moved to archive/ (plan step 12).
 set -euo pipefail
