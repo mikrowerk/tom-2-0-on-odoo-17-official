@@ -171,7 +171,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
 
 ### Phase D – Skripte
 
-- [ ] **9. `setup.sh`**
+- [x] **9. `setup.sh`**
   - Neu: `deployment/docker-services/setup.sh` (idempotent, `set -euo pipefail`)
     1. Prüft, ob `docker` und `docker compose` v2 vorhanden sind.
     2. Legt die Netzwerke `db-net` und `ingress-net` an, falls sie fehlen.
@@ -189,6 +189,9 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
     - gültige Fixture → Exit 0, zweiter Lauf → Exit 0 (Idempotenz), Netzwerke existieren
   - `shellcheck` ist sauber.
   - Commit: `deployment: add setup.sh`
+  - Ergebnis 2026-10-06: `test-setup.sh` mit 14/14 Prüfungen grün: fehlende `.env`, fehlende, leere und `changeme`-Variablen, abweichender DB-User, Idempotenz, dhparams erzeugen, nicht überschreiben und ungültig melden, Rechte-Warnung. Vom Test angelegte Netzwerke und Volumes werden danach wieder entfernt. `shellcheck` ist sauber.
+  - **Abweichung (trivial):** Die DH-Parameter sind die standardisierte Gruppe ffdhe2048 (RFC 7919, von Mozilla empfohlen), erzeugt mit `openssl genpkey -genparam -algorithm DH -pkeyopt group:ffdhe2048`, statt mit `openssl dhparam 2048`. Gleiche Stärke, aber keine minutenlange Berechnung.
+  - **Abweichung (trivial):** `shellcheck` läuft mit `-x --source-path=SCRIPTDIR`, damit es auch außerhalb von `tests/` aufgerufen werden kann.
 
 - [ ] **10. `start-all-services.sh`**
   - Neu: `deployment/docker-services/start-all-services.sh`
@@ -245,7 +248,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Commit: `docs: update CLAUDE.md for modular deployment`
 
 - [ ] **14. Abschließende Verifikation**
-  - `shellcheck deployment/docker-services/*.sh deployment/docker-services/tests/*.sh`
+  - `shellcheck -x --source-path=SCRIPTDIR deployment/docker-services/*.sh deployment/docker-services/tests/*.sh`
   - Für jeden Stack `docker compose --env-file .env.example -f … config -q`
   - `tests/test-compose-parity.sh --monolith archive/docker-compose.yaml` und `--modular deployment/docker-services`
   - `tests/test-compose-policy.sh`, `tests/test-nginx-config.sh deployment/docker-services/ingress/conf.d`, `tests/test-repo-hygiene.sh`, `tests/test-setup.sh`, `tests/test-start-order.sh`
