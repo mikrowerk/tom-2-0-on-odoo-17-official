@@ -104,7 +104,7 @@ Externe Volumes, unverändert: `postgres_data`, `odoo_data`, `certbot_www`.
 
 Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack>/compose.yaml config -q` ist grün, `test-compose-parity.sh --modular deployment/docker-services` prüft die bis dahin vorhandenen Stacks (fehlende Stacks werden übersprungen, nicht als Fehler gewertet), `test-compose-policy.sh` ist grün.
 
-- [ ] **5. Policy-Test und `database`-Stack**
+- [x] **5. Policy-Test und `database`-Stack**
   - Neu: `deployment/docker-services/tests/test-compose-policy.sh` prüft alle `*/compose.yaml` und `*/*/compose.yaml`:
     - Jede Datei hat `name:`, kein Dienst hat `container_name`.
     - Nur `ingress/nginx` veröffentlicht Ports, und zwar genau 80 und 443.
@@ -122,6 +122,8 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Neu: `deployment/docker-services/database/.env.example`
   - Neue Tests in diesem Schritt: Policy-Test (grün für `database`). Paritätstest `--modular`, Teil Postgres.
   - Commit: `deployment: add database stack`
+  - Ergebnis 2026-10-06: `config -q`, Policy-Test (9/9) und Paritätstest `--modular` (Postgres) sind grün. Gegenprobe: Mit vorübergehend eingebautem `5432:5432`, einem Passwort-Literal und `container_name` meldet der Policy-Test genau diese drei Verstöße.
+  - **Abweichung (trivial):** Pflichtvariablen werden als `${VAR:?set in .env}` referenziert. Fehlt eine Variable, bricht `docker compose` sofort ab, statt mit leerem Wert zu starten.
 
 - [ ] **6. `odoo-griffity-prod`-Stack**
   - Neu: `deployment/docker-services/odoo-griffity-prod/compose.yaml`

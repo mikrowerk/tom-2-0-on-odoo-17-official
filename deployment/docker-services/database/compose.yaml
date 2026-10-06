@@ -1,0 +1,40 @@
+# Copyright Mikrowerk a Gammadata Business.
+# SPDX-License-Identifier: AGPL-3
+#
+# Shared PostgreSQL for all Odoo instances. Reachable from outside only via SSH tunnel
+# (ssh -L 5432:127.0.0.1:5432 <user>@<vps>); the containers use db-net (alias postgresql).
+# Networks and volumes are created by ../setup.sh.
+
+name: database
+
+services:
+  postgresql:
+    image: ${POSTGRES_IMAGE:-ghcr.io/mikrowerk/postgresql:15}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/bitnami/postgresql
+    environment:
+      POSTGRESQL_POSTGRES_PASSWORD: ${POSTGRESQL_POSTGRES_PASSWORD:?set in .env}
+      POSTGRESQL_USERNAME: ${POSTGRESQL_USERNAME:?set in .env}
+      POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD:?set in .env}
+      POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE:?set in .env}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      db-net:
+        aliases:
+          - postgresql
+
+volumes:
+  postgres_data:
+    external: true
+
+networks:
+  db-net:
+    external: true
