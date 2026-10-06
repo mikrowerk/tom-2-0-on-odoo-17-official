@@ -264,7 +264,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Commit: `docs: update CLAUDE.md for modular deployment`
   - Ergebnis 2026-10-06: Angepasst wurden die Tabelle „Aufbau“ (`deployment/docker-services/`, `archive/`, `.dockerignore`), die Abschnitte „Deployment“ (`setup.sh`, `start-all-services.sh`, Update-Ablauf mit Backup-Pause) und „Tests“ (neu), die Architektur (tatsächlicher Baum, Netzwerke und Aliase, Backup unter `odoo-*/backup`, robuster nginx-Start, Healthcheck-Hinweis), „Secrets“ (`:?`-Variablen, Platzhalter unter `archive/`), die `.features/.specs|.plans|.docs` und der Hinweis zum Worker-Modus bzw. zur fehlenden `/websocket`-Weiterleitung. Verweise auf `infra/` und `.features/specs` ohne Punkt gibt es nicht mehr.
 
-- [ ] **14. Abschließende Verifikation**
+- [x] **14. Abschließende Verifikation**
   - `shellcheck -x --source-path=SCRIPTDIR deployment/docker-services/*.sh deployment/docker-services/tests/*.sh`
   - Für jeden Stack `docker compose --env-file .env.example -f … config -q`
   - `tests/test-compose-parity.sh --monolith archive/docker-compose.yaml` und `--modular deployment/docker-services`
@@ -273,6 +273,18 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Image-Build: `docker build --platform linux/amd64 .` lokal, optional, weil Ghostscript lange kompiliert. Alternativ muss der CI-Lauf `build_publish_image.yml` nach dem Push grün sein.
   - `git status` ist sauber, und keine `.env` ist getrackt (`git ls-files | grep -E '(^|/)\.env$'` liefert nichts).
   - Haken in diesem Plan setzen. Commit: `docs: mark modular compose plan as done`
+  - Ergebnis 2026-10-06, alles grün:
+    - `shellcheck` ist sauber, `config -q` für 4/4 Stacks
+    - `run-baseline.sh` (Monolith unter `archive/`): 48 ok
+    - Paritätstest `--modular`: 47 ok
+    - Policy-Test: 40 ok
+    - `nginx -t` auf `ingress/conf.d` (ohne `--add-host`): ok
+    - Repo-Hygiene: 31 ok
+    - `test-setup.sh`: 14 ok
+    - `test-start-order.sh`: 5 ok
+    - `smoke-test.sh`: 31 ok, danach ist alles aufgeräumt
+    - Keine `.env` ist getrackt.
+  - **Offen:** Der Image-Build wurde nicht lokal ausgeführt, weil Ghostscript unter amd64-Emulation zu lange kompiliert. Laut Plan ersetzt ihn der CI-Lauf `build_publish_image.yml`, und der startet erst nach einem Push. Die Build-Kontext-Probe in `test-repo-hygiene.sh` belegt, dass alle 18 `COPY`-Quellen weiterhin im Kontext liegen.
 
 ---
 
