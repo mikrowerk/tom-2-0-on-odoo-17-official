@@ -245,3 +245,12 @@ Der lokale Smoke-Test soll native arm64-Images verwenden. Geprüft am 2026-10-06
 - Befund: Die versionierte `nginx-conf/ssl-dhparams.pem` ist geschwärzt (`*** redacted ***`), genau wie die Secrets in `docker-compose.yaml` und `odoo.conf`. Die Festlegung „aus `nginx-conf/` übernehmen“ ist damit hinfällig.
 - Entscheidung (Rückfrage beantwortet): `ingress/conf.d/ssl-dhparams.pem` wird gitignored. `setup.sh` erzeugt die Datei mit `openssl dhparam 2048`, aber nur, wenn sie fehlt. Eine vorhandene Datei, z. B. die Kopie aus `/opt/nginx/config`, wird nie überschrieben.
 - Entscheidung (Rückfrage beantwortet): Die Baseline gilt mit diesem Befund als bekannt. `test-nginx-config.sh` testet auf einer Kopie und setzt dort generierte Test-DH-Parameter (ffdhe2048) ein, wenn die Datei fehlt oder kein gültiges PEM ist.
+
+### 2026-10-06 (nach Abschluss: Websocket-Weiterleitung)
+
+- Befund auf der VPS (curl mit Upgrade-Headern auf `https://tomagency.griffity.de/websocket`): `400 Bad Request`, Fehlerseite von Werkzeug, also von Odoo. nginx reicht `Upgrade`/`Connection` nicht weiter, Live-Updates funktionieren deshalb nicht. Das betrifft die bisherige Produktivkonfiguration (`archive/nginx-conf/`) und die daraus übernommene `ingress/conf.d`.
+- Auf der VPS ist `workers` in `odoo.conf` nicht gesetzt (Auskunft des Users), Odoo läuft also im Threaded-Modus. Der Websocket wird damit auf 8069 bedient, Port 8072 ist nicht nötig.
+- Entscheidung (Auftrag des Users): `ingress/conf.d` wird korrigiert, die frühere Beobachtung „nicht im Scope“ ist damit erledigt.
+  - `odoo.conf`: `map $http_upgrade $connection_upgrade`
+  - vhost: `location /websocket` mit `proxy_http_version 1.1`, `Upgrade`, `Connection`, Upstream `odoo-backend` (8069) und Timeouts von 3600 s
+- Nachweis: Der Smoke-Test prüft neu den Websocket-Handshake (`101`). Mit der alten Konfiguration ist er rot (`400`, wie auf der VPS), mit der neuen grün (32/32).

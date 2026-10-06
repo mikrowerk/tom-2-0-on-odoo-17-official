@@ -9,7 +9,8 @@
 #   odoo      docker.io/library/odoo:17.0 (official image, without TOM modules)
 #   backup    tom-backup-image:smoke, built from ../tom-backup-image (fallback: production image)
 # It proves the infrastructure (start order, robust nginx start, routing, ports, network
-# isolation, DB access of the backup, decoupling of the backup), not the TOM image itself.
+# isolation, websocket handshake, DB access of the backup, decoupling of the backup), not the
+# TOM image itself.
 #
 # Needs free host ports 80, 443 and 15432 (SMOKE_PG_HOST_PORT). Aborts if the volumes postgres_data, odoo_data or
 # certbot_www already exist; everything it creates is removed again (the image
@@ -83,6 +84,17 @@ http_code() {
     [[ "$1" == "http" ]] && port=80
     curl -sk -o /dev/null -w '%{http_code}' --max-time 20 \
         --resolve "${DOMAIN}:${port}:127.0.0.1" "$1://${DOMAIN}$2" || true
+}
+
+# ws_handshake: status code of a websocket handshake on /websocket through nginx (101 expected).
+# The key is the 16-byte sample nonce of RFC 6455. After a 101 the connection stays open, curl
+# ends with the timeout and still writes the status code.
+ws_handshake() {
+    curl -sk -o /dev/null -w '%{http_code}' --http1.1 --max-time 5 \
+        --resolve "${DOMAIN}:443:127.0.0.1" \
+        -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" \
+        -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" -H "Origin: https://${DOMAIN}" \
+        "https://${DOMAIN}/websocket" || true
 }
 
 # wait_for_code <expected> <timeout-seconds> <scheme> <path>
@@ -217,6 +229,9 @@ assert_eq "nginx not restarted" "${nginx_started}" "$(docker inspect --format '{
 
 echo "== 5. http redirect"
 assert_eq "http -> https" "301" "$(http_code http /web/login)"
+
+echo "== 5b. websocket (live updates)"
+assert_eq "websocket handshake on /websocket" "101" "$(ws_handshake)"
 
 echo "== 6. ports"
 pg_id="$(cid database postgresql)"

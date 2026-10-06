@@ -73,7 +73,7 @@ Der Smoke-Test verwendet Ersatz-Images, weil das TOM-Image nur für amd64 existi
 
 ## Wichtige Abhängigkeiten in der Konfiguration
 
-- **Worker-Modus**: `archive/odoo.conf` setzt `workers = 6`, `max_cron_threads = 2` und `gevent_port = 8072`. Dafür muss nginx `/websocket` an Port 8072 weiterleiten. Die produktive Konfiguration (`ingress/conf.d`, entspricht `archive/nginx-conf/`) tut das **nicht**. Läuft Odoo auf der VPS mit Workern, funktionieren Live-Updates deshalb nicht. Die Lösung ist eine eigene Aufgabe, als Vorlage dient `archive/nginx-conf-new/`.
+- **Websocket / Worker-Modus**: Auf der VPS ist `workers` **nicht** gesetzt (Threaded-Server, Stand 2026-10-06). `archive/odoo.conf` mit `workers = 6` entspricht also nicht der Produktion. Live-Updates (Chatter, Benachrichtigungen, Anwesenheit) laufen über `/websocket` auf Port 8069. Dafür braucht nginx `proxy_http_version 1.1` und die Header `Upgrade`/`Connection` (`location /websocket` in `ingress/conf.d`). Ohne diese Header antwortet Odoo mit 400. Wer `workers > 0` setzt, muss `/websocket` auf den gevent-Port 8072 umleiten (Vorlage `archive/nginx-conf-new/`). Der Smoke-Test prüft den Handshake (101).
 - **Timeouts**: `limit_time_real` (1200 s) in `odoo.conf` darf nicht größer sein als `proxy_read_timeout` in nginx (1200 s).
 - **DB-Verbindungen**: `db_maxconn = 10` mal 9 Prozesse (6 Worker + 2 Cron + 1 gevent) ergibt 90, das muss unter `max_connections` von PostgreSQL (100) bleiben. Wer `workers` erhöht, muss diese Rechnung neu machen.
 - `dbfilter = ^%h$` und `db_name` setzen voraus, dass der Datenbankname dem Hostnamen entspricht. `list_db = False`, außerdem blockiert nginx `/web/database`.
