@@ -193,7 +193,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - **Abweichung (trivial):** Die DH-Parameter sind die standardisierte Gruppe ffdhe2048 (RFC 7919, von Mozilla empfohlen), erzeugt mit `openssl genpkey -genparam -algorithm DH -pkeyopt group:ffdhe2048`, statt mit `openssl dhparam 2048`. Gleiche Stärke, aber keine minutenlange Berechnung.
   - **Abweichung (trivial):** `shellcheck` läuft mit `-x --source-path=SCRIPTDIR`, damit es auch außerhalb von `tests/` aufgerufen werden kann.
 
-- [ ] **10. `start-all-services.sh`**
+- [x] **10. `start-all-services.sh`**
   - Neu: `deployment/docker-services/start-all-services.sh`
     - Reihenfolge: `database` → warten, bis der Postgres-Healthcheck `healthy` meldet (mit Timeout) → alle `odoo-*/` → alle `odoo-*/backup/` (falls vorhanden) → `ingress`.
     - Jeweils `docker compose up -d` im Stack-Verzeichnis.
@@ -202,6 +202,8 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Neu: `deployment/docker-services/tests/test-start-order.sh` prüft die Reihenfolge per `--dry-run`, auch mit einem zweiten Fixture-Kunden (`odoo-test2`) mit und ohne `backup/`.
   - `shellcheck` ist sauber.
   - Commit: `deployment: add start-all-services.sh`
+  - Ergebnis 2026-10-06: `test-start-order.sh` mit 5/5 Prüfungen grün: Reihenfolge `database → odoo-griffity-prod → odoo-test2 → odoo-griffity-prod/backup → ingress`, `setup.sh` läuft zuerst, die DB wartet auf `healthy`, kein Backup ohne `backup/`, ohne Odoo-Instanzen nur `database` und `ingress`.
+  - **Abweichung (trivial):** Das Warten auf den Healthcheck übernimmt `docker compose up -d --wait --wait-timeout ${DB_WAIT_TIMEOUT:-180}` statt einer eigenen Schleife. Zusätzlich gibt es `--root <dir>` für die Tests, analog zu `setup.sh`.
 
 ### Phase E – Integration
 
