@@ -89,7 +89,7 @@ Externe Volumes, unverändert: `postgres_data`, `odoo_data`, `certbot_www`.
   - Commit: `deployment: move nginx config to ingress/conf.d and repair options-ssl-nginx.conf`
   - Ergebnis 2026-10-06: `nginx -t` ist grün. `diff -r` zeigt nur den Rest `root@u` in `nginx-conf/options-ssl-nginx.conf` und die fehlende `ssl-dhparams.pem`. Beides ist gewollt, siehe Abweichung oben.
 
-- [ ] **4. Repo-Hygiene: `.dockerignore` und `.gitignore`**
+- [x] **4. Repo-Hygiene: `.dockerignore` und `.gitignore`**
   - Neu: `.dockerignore` mit `deployment/`, `.features/`, `archive/`, `**/.env`, `.idea/` und `.git`.
   - `.gitignore`: `.env` greift bereits in jeder Tiefe (Zeile 139). Ergänzen: `!.env.example` zur Sicherheit, `deployment/docker-services/tests/.tmp/` für Testartefakte und `deployment/docker-services/ingress/conf.d/ssl-dhparams.pem`.
   - Neu: `deployment/docker-services/tests/test-repo-hygiene.sh`
@@ -97,6 +97,8 @@ Externe Volumes, unverändert: `postgres_data`, `odoo_data`, `certbot_www`.
     - Build-Kontext-Probe: `docker build -f - .` mit einem Mini-Dockerfile (`FROM busybox`, `COPY . /ctx`, `RUN` listet `/ctx`). Prüft, dass alle `COPY`-Quellen aus dem echten `Dockerfile` im Kontext vorhanden sind und `deployment/`, `.features/` und `archive/` fehlen.
   - Nachweis: Der Test ist grün, und die Build-Kontext-Probe vorher und nachher zeigt, dass keine `COPY`-Quelle verloren gegangen ist.
   - Commit: `build: add .dockerignore, keep deployment and docs out of build context`
+  - Ergebnis 2026-10-06: Vorher waren alle 18 `COPY`-Quellen im Kontext, außerdem `deployment/` und `.features/`, und die Ignore-Regeln für dhparams und `tests/.tmp` fehlten (4 Fehler). Nachher sind alle Prüfungen grün, die 18 `COPY`-Quellen weiterhin vorhanden.
+  - **Abweichung:** `shellcheck` läuft ab jetzt mit `-x`, damit das eingebundene `lib.sh` mitgeprüft wird. Das gilt auch für die Befehle in Schritt 14.
 
 ### Phase C – Stacks
 

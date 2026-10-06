@@ -206,3 +206,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# deployment (deployment/docker-services): secrets stay on the VPS, see CLAUDE.md
+!.env.example
+deployment/docker-services/ingress/conf.d/ssl-dhparams.pem
+deployment/docker-services/tests/.tmp/

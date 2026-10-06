@@ -1,0 +1,8 @@
+# Only the add-ons and additional-requirements.txt are copied into the image (see Dockerfile);
+# keep deployment files, local secrets and docs out of the build context.
+.git
+.idea/
+.features/
+archive/
+deployment/
+**/.env
