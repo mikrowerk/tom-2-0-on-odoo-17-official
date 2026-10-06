@@ -1,0 +1,43 @@
+# Copyright Mikrowerk a Gammadata Business.
+# SPDX-License-Identifier: AGPL-3
+#
+# Odoo instance griffity-prod (TOM 2.0 on Odoo 17). No published ports: nginx (ingress stack)
+# reaches it on ingress-net as odoo-griffity-prod:8069/8072, the database on db-net as postgresql.
+# The backup runs as a separate project in ./backup, so `docker compose up/down` here never
+# touches it. Update: set ODOO_IMAGE_TAG in .env, then `docker compose pull && docker compose up -d`.
+
+name: odoo-griffity-prod
+
+services:
+  odoo:
+    image: ${ODOO_IMAGE:-ghcr.io/mikrowerk/tom-2-0-odoo-17-image}:${ODOO_IMAGE_TAG:?set in .env}
+    restart: unless-stopped
+    volumes:
+      - odoo_data:/var/lib/odoo
+      - ${ODOO_CONF_DIR:-/opt/odoo/conf}:/etc/odoo
+    environment:
+      HOST: postgresql
+      PORT: "5432"
+      USER: ${ODOO_DB_USER:?set in .env}
+      PASSWORD: ${ODOO_DB_PASSWORD:?set in .env}
+      ODOO_CONFIG_ENCRYPTION_KEY: ${ODOO_CONFIG_ENCRYPTION_KEY:?set in .env}
+    command:
+      - odoo
+      - --log-level=info
+      - -d
+      - ${ODOO_DB_NAME:?set in .env}
+    networks:
+      db-net: {}
+      ingress-net:
+        aliases:
+          - odoo-griffity-prod
+
+volumes:
+  odoo_data:
+    external: true
+
+networks:
+  db-net:
+    external: true
+  ingress-net:
+    external: true

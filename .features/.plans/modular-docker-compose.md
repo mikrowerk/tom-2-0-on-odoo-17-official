@@ -125,7 +125,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Ergebnis 2026-10-06: `config -q`, Policy-Test (9/9) und Paritätstest `--modular` (Postgres) sind grün. Gegenprobe: Mit vorübergehend eingebautem `5432:5432`, einem Passwort-Literal und `container_name` meldet der Policy-Test genau diese drei Verstöße.
   - **Abweichung (trivial):** Pflichtvariablen werden als `${VAR:?set in .env}` referenziert. Fehlt eine Variable, bricht `docker compose` sofort ab, statt mit leerem Wert zu starten.
 
-- [ ] **6. `odoo-griffity-prod`-Stack**
+- [x] **6. `odoo-griffity-prod`-Stack**
   - Neu: `deployment/docker-services/odoo-griffity-prod/compose.yaml`
     - `name: odoo-griffity-prod`, Dienst `odoo`, Image `${ODOO_IMAGE:-ghcr.io/mikrowerk/tom-2-0-odoo-17-image}:${ODOO_IMAGE_TAG}`, `restart: unless-stopped`, **keine** Ports.
     - Volumes `odoo_data:/var/lib/odoo` (external) und `${ODOO_CONF_DIR:-/opt/odoo/conf}:/etc/odoo`.
@@ -135,6 +135,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Neu: `deployment/docker-services/odoo-griffity-prod/.env.example` mit `ODOO_IMAGE_TAG`, `ODOO_DB_NAME`, `ODOO_DB_USER`, `ODOO_DB_PASSWORD`, `ODOO_CONFIG_ENCRYPTION_KEY` und `ODOO_CONF_DIR`.
   - Tests: Policy- und Paritätstest um Odoo erweitert, beide grün.
   - Commit: `deployment: add odoo-griffity-prod stack`
+  - Ergebnis 2026-10-06: `config -q`, Policy-Test und Paritätstest `--modular` (Postgres und Odoo) sind grün. In `.env.example` steht `ODOO_IMAGE_TAG=026aae4`, das ist der aktuelle Produktiv-Tag aus dem Monolithen.
 
 - [ ] **7. Backup-Stack `odoo-griffity-prod/backup`**
   - Neu: `deployment/docker-services/odoo-griffity-prod/backup/compose.yaml`
