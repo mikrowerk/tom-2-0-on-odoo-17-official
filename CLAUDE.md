@@ -10,10 +10,9 @@ Hier wird **kein Odoo-Modulcode entwickelt**. Die Add-ons liegen in Git-Submodul
 |---|---|
 | `Dockerfile` | Mehrstufiger Build: Stufe `gs-build` kompiliert Ghostscript aus den Quellen (für PDF/A-3b, TOM-201), danach Basis `ghcr.io/mikrowerk/odoo-17-official-image-amd-64:<datum>` plus Add-ons und pip-Pakete |
 | `additional-requirements.txt` | Zusätzliche Python-Pakete, die als root ins Image installiert werden |
-| `docker-compose.yaml` | Aktueller, monolithischer Laufzeit-Stack auf der VPS (wird modularisiert, siehe Zielarchitektur): `postgresql` (bitnami 15), `odoo`, `nginx`, `certbot`, `backup-service` |
-| `odoo.conf` | Odoo-Serverkonfiguration; auf der VPS unter `/opt/odoo/conf/odoo.conf` |
-| `nginx-conf/` | Alte nginx-Konfiguration (Single-Process-Odoo), enthält `options-ssl-nginx.conf` und `ssl-dhparams.pem` |
-| `nginx-conf-new/` | Aktuelle nginx-Konfiguration für den Multi-Worker-Betrieb (Websocket → `odoo:8072`), Login-Rate-Limit und Sperren für Scanner-Pfade. Bindet `options-ssl-nginx.conf` und `ssl-dhparams.pem` aus `conf.d` ein, die beiden Dateien müssen also aus `nginx-conf/` mitkopiert werden |
+| `deployment/docker-services/` | Modulare Laufzeit-Stacks für die VPS: `database/`, `ingress/`, `odoo-griffity-prod/` (mit `backup/`) sowie `setup.sh`, `start-all-services.sh` und `tests/` (siehe „Deployment“) |
+| `archive/` | Abgelöster Monolith als Referenz: `docker-compose.yaml`, `odoo.conf` (auf der VPS unter `/opt/odoo/conf/odoo.conf`), `nginx-conf/` (läuft so produktiv) und `nginx-conf-new/` (Multi-Worker-Variante mit `/websocket` → 8072, Login-Rate-Limit, Scanner-Sperren, derzeit nicht produktiv). Secrets und `ssl-dhparams.pem` sind dort geschwärzt (`***`) |
+| `.dockerignore` | Hält `deployment/`, `archive/`, `.features/`, `.git` und `.env`-Dateien aus dem Build-Kontext |
 | `odoo_user_add.sh` | Legt auf dem Host den User/die Gruppe `odoo` mit UID/GID 101 an (passend zum Container, wichtig für Bind-Mounts) |
 | `mount_s3fs.sh` | Bindet einen IONOS-S3-Bucket per s3fs als Filestore ein (uid/gid 101) |
 | `.features/` | Specs, Pläne und Doku (siehe unten) |
@@ -46,16 +45,35 @@ Die meisten Commits hier sind reine Submodul-Bumps. Commit-Messages sind kurz un
   ```
 - Der Ghostscript-Build ist über `GS_VERSION`, `GS_TAG` und `GS_SHA256` versioniert. Bei einem Versionswechsel immer auch die SHA256 aktualisieren.
 
-### Deployment auf die VPS (aktueller monolithischer Stack)
-1. In `docker-compose.yaml` den Image-Tag von `odoo` auf den Commit-Hash des gebauten Images setzen (`ghcr.io/mikrowerk/tom-2-0-odoo-17-image:<hash>`).
-2. Die Dateien auf die VPS kopieren: `odoo.conf` nach `/opt/odoo/conf/`, die nginx-Dateien nach `/opt/nginx/config/`.
-3. `docker compose pull && docker compose up -d`. Nach Modul-Updates ein `-u <module>` gegen die Datenbank `tomagency.griffity.de` ausführen.
+### Deployment auf die VPS
+Die Stacks liegen unter `deployment/docker-services/`. Wie sie auf die VPS kommen und wie die Produktion umgestellt wird (Cutover), ist noch nicht festgelegt (siehe Spec `modular-docker-compose`).
+1. Für jeden Stack `.env.example` nach `.env` kopieren (`chmod 600`) und die Werte eintragen. Die DB-Zugangsdaten (`ODOO_DB_*`) in `odoo-*/.env` und `odoo-*/backup/.env` müssen gleich sein.
+2. `./setup.sh` ausführen. Das Skript ist idempotent: Es legt die Netzwerke `db-net` und `ingress-net` an, ebenso fehlende Volumes (mit Warnung, auf der VPS existieren sie bereits) und `ingress/conf.d/ssl-dhparams.pem`, falls die Datei fehlt. Außerdem prüft es alle `.env`-Dateien.
+3. `./start-all-services.sh` startet die Stacks in dieser Reihenfolge: `database` (wartet auf `healthy`) → `odoo-*` → `odoo-*/backup` → `ingress`. Mit `--dry-run` werden die Befehle nur angezeigt.
+4. **Odoo-Update:**
+   - In `odoo-griffity-prod/backup` zuerst ein manuelles Backup auslösen (`docker compose exec backup-service /app/entrypoint.sh`), danach das Backup mit `docker compose stop` anhalten. Der Filestore wird ohne Versionen gespiegelt, siehe `.features/.specs/backup-filestore-versioning.md`.
+   - In `odoo-griffity-prod/.env` `ODOO_IMAGE_TAG` setzen, dann `docker compose pull && docker compose up -d` ausführen. Bei Bedarf `-u <module>` gegen `tomagency.griffity.de` laufen lassen.
+   - Läuft alles, das Backup mit `docker compose start` wieder starten. `start-all-services.sh` startet ein angehaltenes Backup ebenfalls wieder, deshalb das Skript nicht mitten in einem Update aufrufen.
 
-Die Volumes `postgres_data`, `odoo_data` und `certbot_www` sind `external: true` und müssen auf dem Host schon existieren.
+Die Volumes `postgres_data`, `odoo_data` und `certbot_www` sind `external: true` und behalten die Namen aus dem Monolithen.
+
+### Tests (`deployment/docker-services/tests/`)
+```bash
+shellcheck -x --source-path=SCRIPTDIR deployment/docker-services/*.sh deployment/docker-services/tests/*.sh
+deployment/docker-services/tests/run-baseline.sh          # Parität + nginx -t des Monolithen (archive/)
+deployment/docker-services/tests/test-compose-parity.sh --modular deployment/docker-services
+deployment/docker-services/tests/test-compose-policy.sh   # Ports, Netze, Restart, Secrets, Image-Defaults
+deployment/docker-services/tests/test-nginx-config.sh deployment/docker-services/ingress/conf.d
+deployment/docker-services/tests/test-repo-hygiene.sh     # gitignore + Build-Kontext
+deployment/docker-services/tests/test-setup.sh
+deployment/docker-services/tests/test-start-order.sh
+deployment/docker-services/tests/smoke-test.sh            # Ende-zu-Ende, lokal, nativ arm64, braucht Ports 80/443/15432
+```
+Der Smoke-Test verwendet Ersatz-Images, weil das TOM-Image nur für amd64 existiert: `odoo:17.0`, `bitnamilegacy/postgresql:15.10.0-debian-12-r2` und ein lokal gebautes `../tom-backup-image`. Er prüft die Infrastruktur, nicht die TOM-Module. Die Variablen `POSTGRES_IMAGE`, `ODOO_IMAGE`, `BACKUP_IMAGE` und `POSTGRES_HOST_PORT` sind nur für Tests gedacht und stehen nie in einer `.env` auf der VPS.
 
 ## Wichtige Abhängigkeiten in der Konfiguration
 
-- **Worker-Modus**: `workers = 6`, `max_cron_threads = 2`, `gevent_port = 8072`. Damit das läuft, muss nginx `/websocket` an `odoo:8072` weiterleiten, also `nginx-conf-new/` verwenden.
+- **Worker-Modus**: `archive/odoo.conf` setzt `workers = 6`, `max_cron_threads = 2` und `gevent_port = 8072`. Dafür muss nginx `/websocket` an Port 8072 weiterleiten. Die produktive Konfiguration (`ingress/conf.d`, entspricht `archive/nginx-conf/`) tut das **nicht**. Läuft Odoo auf der VPS mit Workern, funktionieren Live-Updates deshalb nicht. Die Lösung ist eine eigene Aufgabe, als Vorlage dient `archive/nginx-conf-new/`.
 - **Timeouts**: `limit_time_real` (1200 s) in `odoo.conf` darf nicht größer sein als `proxy_read_timeout` in nginx (1200 s).
 - **DB-Verbindungen**: `db_maxconn = 10` mal 9 Prozesse (6 Worker + 2 Cron + 1 gevent) ergibt 90, das muss unter `max_connections` von PostgreSQL (100) bleiben. Wer `workers` erhöht, muss diese Rechnung neu machen.
 - `dbfilter = ^%h$` und `db_name` setzen voraus, dass der Datenbankname dem Hostnamen entspricht. `list_db = False`, außerdem blockiert nginx `/web/database`.
@@ -63,30 +81,31 @@ Die Volumes `postgres_data`, `odoo_data` und `certbot_www` sind `external: true`
 - `openupgradelib` wird für die Migrationsskripte der OCA-Module bei `-u` gebraucht.
 - `web_dialog_size` bleibt nur so lange im Image, bis das Modul in der Produktion deinstalliert ist (ersetzt durch `mikrowerk_widgets`, TOM-71).
 
-## Zielarchitektur: modulare Compose-Struktur
+## Architektur: modulare Compose-Struktur
 
-Die bestehende `docker-compose.yaml` ist ein **Monolith**, in dem alles zusammen läuft: Postgres, Odoo, nginx, certbot und Backup. Das ist der Ausgangszustand. Er soll in eine modulare Struktur auf der VPS aufgeteilt werden, damit mehrere Odoo-Instanzen (Kunden) eine gemeinsame Infrastruktur nutzen können:
+Spec: `.features/.specs/modular-docker-compose.md`, Plan: `.features/.plans/modular-docker-compose.md`.
 
 ```
-/docker-services/
-├── database/                 # Postgres,  ggf. Backup-Service
-│   └── compose.yaml
-├── odoo-griffity-prod/
-│   ├── compose.yaml
-│   ├── .env
-│   └── config/odoo.conf
-├── odoo-kunde2/
-│   └── ...
-└── ingress/              # Reverse Proxy (nginx + certbot),
+deployment/docker-services/
+├── setup.sh                  # Netzwerke, Volumes, dhparams, .env-Prüfung (idempotent)
+├── start-all-services.sh     # database → odoo-* → odoo-*/backup → ingress
+├── database/                 # Projekt "database": Postgres (ghcr.io/mikrowerk/postgresql:15 = Bitnami 15.10)
+├── odoo-griffity-prod/       # Projekt "odoo-griffity-prod": Odoo, Alias odoo-griffity-prod in ingress-net
+│   └── backup/               # Projekt "odoo-griffity-prod-backup": backup-service, separat pausierbar
+├── ingress/                  # Projekt "ingress": nginx (1.30) + certbot
+│   └── conf.d/               # nginx-Konfiguration (Zertifikate in CERTBOT_DIR, dhparams von setup.sh)
+└── tests/
 ```
 
-Die Detail-Spezifikation folgt noch und wird unter `.features/specs/` abgelegt. Bis dahin gelten diese Leitlinien:
-- **`infra/`** stellt die gemeinsamen Dienste bereit: Postgres, nginx/certbot und ggf. Backup. Die Kunden-Stacks hängen sich über ein gemeinsames externes Docker-Netzwerk an und definieren diese Dienste nicht noch einmal.
-- **Je Kunde ein eigenes Verzeichnis** mit eigener `compose.yaml`, `.env` und `config/odoo.conf` sowie eigenen Volumes, eigener Datenbank und eigenem DB-User. Ein Kunden-Stack muss sich einzeln starten, stoppen und aktualisieren lassen, ohne die anderen Stacks zu berühren.
-- **Keine festen `container_name`** und keine öffentlichen Host-Ports für Odoo. nginx erreicht die Instanzen über das Netzwerk, nur nginx veröffentlicht 80 und 443.
-- **Postgres nur per SSH-Tunnel von außen:** Den Port nur an Loopback binden (`127.0.0.1:5432:5432`), **nie** `5432:5432` (das wäre `0.0.0.0`, und Docker umgeht dabei ufw/iptables-Regeln). Zugriff von außen (pgAdmin, DBeaver, psql) erfolgt nur über `ssh -L 5432:127.0.0.1:5432 <user>@<vps>`. Die Odoo-Container verbinden sich weiter über das Docker-Netzwerk (`db_host` = Service-Name), nicht über den Host-Port. Derzeit schützt zwar eine externe Firewall den Postgres-Port, darauf darf sich die Konfiguration aber **nicht** verlassen: Die Compose-Dateien müssen auch ohne Firewall sicher sein (gilt genauso für alle anderen internen Dienste).
-- **Ressourcen addieren sich:** Die `db_maxconn`-Rechnung (siehe unten) gilt dann für alle Odoo-Instanzen zusammen gegen ein einziges Postgres. Dasselbe gilt für Worker und RAM.
-- Neue Compose-Dateien heißen `compose.yaml`, und es wird `docker compose` (v2) verwendet. Die alte `docker-compose.yaml` bleibt als Referenz liegen, bis die Migration abgeschlossen ist.
+- **Je Odoo-Instanz ein Verzeichnis `odoo-<name>/`** mit eigener `compose.yaml` und `.env`, eigener Datenbank, eigenem DB-User und eigenem Backup unter `backup/`. Jeder Stack lässt sich einzeln starten, stoppen und aktualisieren, ohne die anderen zu berühren. Weitere Instanzen und eine Vorlage dafür sind noch nicht umgesetzt.
+- **Backup als eigenes Projekt:** Ein `docker compose up`/`down` im Odoo-Stack lässt das Backup unberührt. Nur so lässt es sich während eines Updates pausieren.
+- **Netzwerke (extern):** `db-net` verbindet Postgres (Alias `postgresql`) mit Odoo und Backup. `ingress-net` verbindet nginx mit Odoo (Alias `odoo-<name>`). nginx kann Postgres nicht erreichen. certbot hängt in keinem der beiden Netzwerke.
+- **Robuster nginx-Start:** Der Upstream wird mit `resolver 127.0.0.11` und `server odoo-griffity-prod:8069 resolve;` zur Laufzeit aufgelöst. Deshalb startet nginx auch, wenn ein Odoo-Stack nicht läuft (bis dahin 502). Voraussetzung ist nginx ≥ 1.27.3.
+- **Keine festen `container_name`**, sondern feste Projektnamen (`name:`). Odoo veröffentlicht keine Ports, nach außen veröffentlicht nur nginx 80 und 443.
+- **Postgres nur per SSH-Tunnel von außen:** Der Port ist nur an Loopback gebunden (`127.0.0.1:5432:5432`), **nie** `5432:5432` (das wäre `0.0.0.0`, und Docker umgeht dabei ufw/iptables-Regeln). Zugriff von außen (pgAdmin, DBeaver, psql) nur über `ssh -L 5432:127.0.0.1:5432 <user>@<vps>`. Die Container verbinden sich über `db-net`. Eine externe Firewall schützt den Port derzeit zwar, darauf darf sich die Konfiguration aber **nicht** verlassen. Die Compose-Dateien müssen auch ohne Firewall sicher sein, und das gilt genauso für alle anderen internen Dienste. Der Policy-Test prüft das.
+- **Healthcheck Postgres:** `pg_isready` braucht `-U`. Ohne diese Option findet es im Bitnami-Container (UID 1001) keinen Benutzer, und der Check scheitert mit `no attempt`.
+- **Ressourcen addieren sich:** Die `db_maxconn`-Rechnung (siehe oben) gilt für alle Odoo-Instanzen zusammen gegen ein einziges Postgres. Dasselbe gilt für Worker und RAM.
+- Compose-Dateien heißen `compose.yaml`, verwendet wird `docker compose` (v2).
 
 ## Secrets
 
@@ -94,7 +113,9 @@ Die Detail-Spezifikation folgt noch und wird unter `.features/specs/` abgelegt. 
 - `.env` und Passwort-Dateien kommen in `.gitignore`. Ins Repo gehört stattdessen eine `.env.example` mit allen Variablen und leeren oder Dummy-Werten.
 - Passwort-Dateien bekommen restriktive Rechte (`chmod 600`, Besitzer root bzw. UID 101).
 - In `compose.yaml` werden Werte nur per `${VAR}` bzw. `secrets:` referenziert. Werte, die Odoo aus `odoo.conf` braucht (z. B. `admin_passwd`), werden per Umgebungsvariable/Kommandozeile übergeben oder beim Start aus der Passwort-Datei erzeugt.
-- Die bestehenden Dateien `docker-compose.yaml` und `odoo.conf` enthalten nur Platzhalter (`***`). Diese bleiben unverändert, echte Werte werden dort nie eingetragen.
+- Pflichtvariablen werden als `${VAR:?set in .env}` referenziert. `setup.sh` weist `.env`-Dateien ab, in denen Variablen fehlen, leer sind oder noch `changeme` steht.
+- `odoo.conf` (mit `admin_passwd` usw.) und die Zertifikate liegen nur auf der VPS (`ODOO_CONF_DIR`, `CERTBOT_DIR`). `ingress/conf.d/ssl-dhparams.pem` ist gitignored.
+- Die Dateien unter `archive/` enthalten nur Platzhalter (`***`). Diese bleiben unverändert, echte Werte werden dort nie eingetragen.
 
 ## Projektdokumente: `.features/`
 
@@ -102,8 +123,8 @@ Spezifikationen, Pläne und Dokumentation werden im Repo versioniert:
 
 | Verzeichnis | Inhalt |
 |---|---|
-| `.features/specs/` | Spezifikationen (Was und Warum), z. B. `.features/specs/modular-compose.md` |
-| `.features/plans/` | Umsetzungspläne zu einer Spec (Schritte, betroffene Dateien, Migrationsreihenfolge, Rollback) |
-| `.features/docs/` | Betriebs- und Architekturdokumentation, z. B. Setup der VPS, Runbooks, neuen Kunden anlegen |
+| `.features/.specs/` | Spezifikationen (Was und Warum) mit Abschnitt „Entscheidungen“ (datiert), z. B. `.features/.specs/modular-docker-compose.md` |
+| `.features/.plans/` | Umsetzungspläne zu einer Spec (Baseline, Schritte als Checkboxen, betroffene Dateien, Abweichungen) |
+| `.features/.docs/` | Betriebs- und Architekturdokumentation, z. B. Setup der VPS, Runbooks, neuen Kunden anlegen |
 
-Ein Plan und seine Spec tragen denselben Dateinamen. Ein Plan wird erst erstellt, wenn die Spec vorliegt, und die Umsetzung erfolgt erst nach einem Plan.
+Ein Plan und seine Spec tragen denselben Dateinamen. Ein Plan wird erst erstellt, wenn die Spec vorliegt, und die Umsetzung erfolgt erst nach einem Plan. Umgesetzt wird auf einem Feature-Branch (`feature/<name>`), der von `releases/17-candidate` abzweigt, mit einem Commit pro Planschritt.

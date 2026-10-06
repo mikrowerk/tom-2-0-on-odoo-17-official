@@ -254,7 +254,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Commit: `chore: move monolithic compose and old configs to archive/`
   - Ergebnis 2026-10-06: Per `git mv` verschoben (8 Dateien). `run-baseline.sh` schaltet automatisch auf `archive/` um und ist grün (Parität des Monolithen, `nginx -t` der Produktivkonfiguration, jetzt mit `nginx:1.30` statt des lokalen `nginx:latest` 1.27.4). `test-repo-hygiene.sh` ist grün, `archive/` liegt nicht im Build-Kontext. `Dockerfile`, `.github/` und die Skripte verweisen nicht mehr auf die alten Pfade, abgesehen von Kommentaren und der bewussten Umschaltung im Baseline-Skript.
 
-- [ ] **13. `CLAUDE.md` an die Spec anpassen**
+- [x] **13. `CLAUDE.md` an die Spec anpassen**
   - Tabelle „Aufbau“ auf `deployment/docker-services/`, `archive/` und `.dockerignore` umstellen.
   - Zielarchitektur-Baum auf den tatsächlichen Stand bringen. Backup-Hinweis bei `database/` entfernen, Backup unter `odoo-*/backup/` eintragen. `infra/` entfernen. Netzwerke `db-net` und `ingress-net` sowie die Aliase nennen.
   - Abschnitt „Deployment“ ergänzen: `setup.sh`, `start-all-services.sh`, Image-Tag über `ODOO_IMAGE_TAG` in der `.env`, Backup vor einem Update stoppen (Verweis auf die Backup-Spec).
@@ -262,6 +262,7 @@ Für jeden Stack-Schritt gilt: `docker compose --env-file .env.example -f <stack
   - Hinweise zu `nginx-conf-new/` und zur fehlenden `/websocket`-Weiterleitung aktualisieren (Beobachtung aus der Spec).
   - Test-Befehle aus `deployment/docker-services/tests/` aufnehmen.
   - Commit: `docs: update CLAUDE.md for modular deployment`
+  - Ergebnis 2026-10-06: Angepasst wurden die Tabelle „Aufbau“ (`deployment/docker-services/`, `archive/`, `.dockerignore`), die Abschnitte „Deployment“ (`setup.sh`, `start-all-services.sh`, Update-Ablauf mit Backup-Pause) und „Tests“ (neu), die Architektur (tatsächlicher Baum, Netzwerke und Aliase, Backup unter `odoo-*/backup`, robuster nginx-Start, Healthcheck-Hinweis), „Secrets“ (`:?`-Variablen, Platzhalter unter `archive/`), die `.features/.specs|.plans|.docs` und der Hinweis zum Worker-Modus bzw. zur fehlenden `/websocket`-Weiterleitung. Verweise auf `infra/` und `.features/specs` ohne Punkt gibt es nicht mehr.
 
 - [ ] **14. Abschließende Verifikation**
   - `shellcheck -x --source-path=SCRIPTDIR deployment/docker-services/*.sh deployment/docker-services/tests/*.sh`
