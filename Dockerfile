@@ -1,6 +1,12 @@
 # Copyright Gammadata GmbH. All Rights Reserved.
 # SPDX-License-Identifier: APACHE-2.0
 
+# Odoo base image. The default is the amd64 mirror used by CI. Local builds for other platforms use the
+# official multi-arch image of the same date (identical content for amd64), e.g. for Molecule tests on arm64:
+#   docker build --platform linux/arm64 --build-arg BASE_IMAGE=docker.io/library/odoo:17.0-20260908 \
+#     -t tom-2-0-odoo-17-image:<commit>-arm64 .
+ARG BASE_IMAGE=ghcr.io/mikrowerk/odoo-17-official-image-amd-64:20260908
+
 # --- Ghostscript 10.x for the PDF/A-3b conversion of reports (mikrowerk_report_pdfa3, TOM-201) ---
 # Artifex publishes no Linux binaries any more, so Ghostscript is built from the release source in a
 # separate stage and copied into the Odoo image. The bundled third-party libraries (freetype, lcms2,
@@ -26,7 +32,7 @@ RUN curl -fsSL -o /tmp/ghostscript.tar.gz \
     && rm -rf /tmp/gs /tmp/ghostscript.tar.gz
 
 # FROM ghcr.io/mikrowerk/tom-2-0-odoo-17-image:6e22768
-FROM ghcr.io/mikrowerk/odoo-17-official-image-amd-64:20260908
+FROM ${BASE_IMAGE}
 
 ARG ADDON_PATH="/mnt/extra-addons"
 
