@@ -285,7 +285,7 @@
     - `concurrency` bricht ältere Läufe nur bei Pull Requests ab.
     - Labels der `metadata-action` werden nicht an den Build gegeben. Die Herkunft steht in den Dockerfile-Labels und in der Attestation.
 
-- [ ] **8. Doku**
+- [x] **8. Doku**
   - `CLAUDE.md`, Abschnitt „Image bauen“:
     - Multi-Arch-Tags `latest`/`<hash>`.
     - Lokaler Build auf Apple Silicon ohne `--platform`.
@@ -302,6 +302,14 @@
   - Dateien: `CLAUDE.md`, `.features/.docs/base-image-update.md`.
   - Prüfung: alle genannten Pfade, Befehle und Workflow-Namen existieren (per `grep`/`ls` gegengeprüft).
   - Commit: `TOM-232: document multi-arch build and base image update`.
+  - **Ergebnis (2026-10-21):**
+    - Alle im Runbook und in CLAUDE.md genannten Pfade existieren.
+    - Workflow-Name, Cron-Zeile und Fehlermeldungen des Skripts per `grep` gegengeprüft.
+  - **Abweichung:**
+    - In CLAUDE.md zusätzlich der Hinweis, dass `tests/image/expected-addons.txt` bei Submodul-Bumps mit neuen oder entfernten
+      Modulen mitgeändert werden muss; sonst ist CI rot.
+    - Die `.dockerignore`-Zeile ist an den echten Inhalt angepasst. Die Zeilen zu `deployment/` und `archive/` habe ich
+      nicht angefasst (vom User übernommen, out of scope).
 
 - [ ] **9. Abschlussverifikation**
   - Lokal:
