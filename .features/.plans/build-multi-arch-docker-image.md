@@ -173,7 +173,7 @@
     - Wie im Plan erwartet weicht das Index-Digest durch die Annotationen ab, im Test `sha256:bba8f333…`.
     - Die Test-Registry bleibt bis Schritt 6 stehen. Dort wird der Build gegen den lokalen Mirror geprüft.
 
-- [ ] **4. Mirror-Workflow**
+- [x] **4. Mirror-Workflow**
   - `.github/workflows/mirror_odoo_base_image.yml`:
     - Trigger: `workflow_dispatch` (Input `date`, optional) und `schedule` (wöchentlich, z. B. Montag 04:00 UTC).
     - Ein Job auf `ubuntu-latest`: checkout, `setup-buildx`, Login ghcr mit `secrets.GIT_HUB_TOKEN`,
@@ -186,6 +186,17 @@
     - Die SHAs werden per `git ls-remote` gegen die Release-Tags der Actions verifiziert.
   - Hinweis: Der Workflow läuft erst, wenn er auf `main` liegt (Entscheidung F1).
   - Commit: `TOM-232: add workflow to mirror the odoo base image`.
+  - **Ergebnis (2026-10-21):**
+    - `actionlint` 1.7.12 (`docker run rhysd/actionlint`) sauber.
+    - SHAs per `git ls-remote` aufgelöst (annotierte Tags dereferenziert):
+      - `actions/checkout` v7.0.1 `3d3c42e5…`
+      - `docker/setup-buildx-action` v4.4.1 `f87e5991…`
+      - `docker/login-action` v4.6.0 `dbcb8138…`
+    - Der alte App-Workflow ist in `actionlint` rot (`actions/checkout@v2` zu alt). Das wird in Schritt 7 behoben.
+  - **Abweichung:**
+    - `environment: github-build` wie im App-Workflow, damit `GIT_HUB_TOKEN` verfügbar ist, falls es ein Environment-Secret ist.
+    - `concurrency` verhindert parallele Läufe.
+    - Das Datum wird per `env` übergeben, nicht in das Skript interpoliert (Schutz vor Injection).
 
 - [ ] **5. Bootstrap des Mirrors (User-Aktion)**
   - Der User führt einmal lokal aus: `docker login ghcr.io` (Token mit `write:packages`), dann `scripts/mirror-odoo-base.sh --date 20260908`.
