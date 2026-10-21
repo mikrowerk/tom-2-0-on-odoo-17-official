@@ -6,7 +6,7 @@ lxml[html_clean]>=6.0.2
 schwifty==2025.9.0
 Unidecode
 rlPyCairo
-mikrowerk_edi_invoicing>=0.7.3
+mikrowerk_edi_invoicing>=0.7.4
 google-genai
 thefuzz
 # E-Mail-Bridge client lib, pinned to commit until a release tag exists (TOM-97)
