@@ -134,7 +134,7 @@
     - `run.sh` vollständig grün: 148 Add-ons, 36/36 Module.
   - **Abweichung:** `.github/` ist ebenfalls ausgeschlossen, weil es nicht ins Image gehört. `**/.env.*` ist ergänzt.
 
-- [ ] **3. Mirror-Skript**
+- [x] **3. Mirror-Skript**
   - `scripts/mirror-odoo-base.sh [--date YYYYMMDD] [--dry-run]`:
     1. Ohne `--date`: Index-Digest von `odoo:17.0` lesen (`imagetools inspect --format '{{json .Manifest}}'`). Dann über die
        Docker-Hub-API (`/v2/namespaces/library/repositories/odoo/tags?name=17.0-`) den datierten Tag `17.0-YYYYMMDD`
@@ -156,6 +156,22 @@
       Danach Registry-Container und Volume entfernen.
     - `shellcheck` sauber.
   - Commit: `TOM-232: add script to mirror the official odoo 17 multi-arch image`.
+  - **Ergebnis (2026-10-21):**
+    - `shellcheck` sauber.
+    - `--dry-run` ohne Datum ermittelt `17.0-20260908` (Index `sha256:8779f815…`, gleich wie `17.0`). Mit `--date 20260908`
+      ist das Ergebnis identisch.
+    - `--date 2026-09-08` → Exit 1 (Format). `--date 20991231` → Exit 1 (Tag existiert nicht).
+    - Gegen ghcr ohne Login bricht das Skript mit „cannot inspect … 403“ ab. Es wertet einen Fehler bei der Abfrage also nie
+      als „Tag fehlt“ und überschreibt deshalb nichts.
+    - Test-Registry `localhost:5055` (`MIRROR_TARGET_REPO`):
+      - Der erste Lauf kopiert in 55 s. Alle 4 Manifeste (amd64, arm64, 2 Attestations) haben dieselben Digests wie
+        upstream; T1 `manifest.sh` ist grün.
+      - Der zweite Lauf ohne Datum meldet „skipped … never overwritten“, Exit 0.
+  - **Abweichung:**
+    - Zusätzlich zur Annotation `org.opencontainers.image.source` setzt das Skript `org.opencontainers.image.base.name` und
+      `.base.digest`. Damit steht das Upstream-Digest (Entscheidung 5) auch in der Registry, nicht nur im Log.
+    - Wie im Plan erwartet weicht das Index-Digest durch die Annotationen ab, im Test `sha256:bba8f333…`.
+    - Die Test-Registry bleibt bis Schritt 6 stehen. Dort wird der Build gegen den lokalen Mirror geprüft.
 
 - [ ] **4. Mirror-Workflow**
   - `.github/workflows/mirror_odoo_base_image.yml`:
