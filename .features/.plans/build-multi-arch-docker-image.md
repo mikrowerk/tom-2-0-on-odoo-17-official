@@ -219,6 +219,15 @@
     - Ob `ghcr.io/mikrowerk/odoo-17-official-multiarch:20260908` schon existiert, habe ich nicht geprüft; lokal gibt es kein ghcr-Login.
       Ohne diesen Tag schlägt der PR-Build fehl. Vor dem PR einmal `scripts/mirror-odoo-base.sh --date 20260908`
       ausführen, falls noch nicht geschehen (siehe Runbook).
+  - **Nachgeholt (2026-10-21):**
+    - Der User hat `scripts/mirror-odoo-base.sh --date 20260908` lokal ausgeführt.
+      Ergebnis: `mirrored`, Index `sha256:bba8f333…` (gleich wie im Registry-Test aus Schritt 3).
+      Die vier Plattform- und Attestation-Manifeste sind digest-gleich mit upstream.
+    - Gegenprobe mit dem Pull-User aus `.env.mgmt-srv` (temporärer `DOCKER_CONFIG`, danach gelöscht):
+      - T1 grün (amd64 + arm64), die drei Annotationen sind gesetzt.
+      - `buildx --check .` mit dem **Standardwert** des Dockerfiles ohne Warnungen.
+      - Build ohne `--build-arg`/`--platform` ergibt arm64 mit Label `base.name=ghcr.io/mikrowerk/odoo-17-official-multiarch:20260908`.
+      - `run.sh` grün: 148 Add-ons, 36/36 Module.
 
 - [x] **6. Dockerfile auf den Multi-Arch-Mirror umstellen**
   - Standardwert von `ARG BASE_IMAGE` wird `ghcr.io/mikrowerk/odoo-17-official-multiarch:20260908`.
