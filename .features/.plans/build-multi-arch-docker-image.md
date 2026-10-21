@@ -116,7 +116,7 @@
       `pip3 check` meldet „No broken requirements found“, `pip3 show pdfminer.six` meldet 20220319.
     - 148 Add-ons, 36/36 Module installiert.
 
-- [ ] **2. `.dockerignore`**
+- [x] **2. `.dockerignore`**
   - Hält `.git`, `.idea/`, `.features/`, `.claude/`, `**/.env`, `tests/` sowie die Laufzeitkonfiguration
     (`nginx-conf*/`, `docker-compose.yaml`, `odoo.conf`, `*.sh` im Root) aus dem Build-Kontext.
     Die Submodule bleiben drin, ihr eigenes `.git` (Datei) fällt per `**/.git` weg.
@@ -126,6 +126,13 @@
     - Neubau arm64 → `run.sh` grün, `expected-addons.txt` unverändert. Das Image enthält keine `.git`-Einträge
       unter `/mnt/extra-addons` (in T3 aufnehmen).
   - Commit: `TOM-232: add .dockerignore for a lean build context`.
+  - **Ergebnis (2026-10-21):**
+    - Build-Kontext: vorher 899.5 MB mit 12 `.git`-Einträgen, nachher 148.2 MB ohne `.git`.
+      Gemessen per `COPY . /ctx` in einem busybox-Wegwerf-Build.
+    - Das Image vor diesem Schritt hatte `/mnt/extra-addons/.git` aus dem Submodul `odoo-tom-jobcontrol`. Die neue
+      T3-Prüfung ist dagegen rot, nach dem Neubau grün.
+    - `run.sh` vollständig grün: 148 Add-ons, 36/36 Module.
+  - **Abweichung:** `.github/` ist ebenfalls ausgeschlossen, weil es nicht ins Image gehört. `**/.env.*` ist ergänzt.
 
 - [ ] **3. Mirror-Skript**
   - `scripts/mirror-odoo-base.sh [--date YYYYMMDD] [--dry-run]`:
