@@ -311,7 +311,7 @@
     - Die `.dockerignore`-Zeile ist an den echten Inhalt angepasst. Die Zeilen zu `deployment/` und `archive/` habe ich
       nicht angefasst (vom User übernommen, out of scope).
 
-- [ ] **9. Abschlussverifikation**
+- [x] **9. Abschlussverifikation** (lokaler Teil; CI-Abnahme durch den User offen)
   - Lokal:
     - `shellcheck` (`tests/image/*.sh`, `scripts/*.sh`), `actionlint` (beide Workflows), `hadolint`, `docker buildx build --check .`
     - Frischer arm64-Build ohne Cache → `tests/image/run.sh` grün.
@@ -325,6 +325,28 @@
     Nach dem Merge auf `releases/17-candidate`: `merge`-Job grün, T1 grün, Tags `latest` und `<hash>` als Manifest-Liste mit
     beiden Plattformen, Attestation vorhanden.
   - Der Mirror-Workflow wird erst nach dem Merge nach `main` per `workflow_dispatch` geprüft (erwartet: „übersprungen“ für `20260908`).
+  - **Ergebnis (2026-10-21):**
+    - Lint:
+      - `shellcheck` über `tests/image/*.sh` und `scripts/*.sh` sauber.
+      - `actionlint` über beide Workflows sauber.
+      - `hadolint`: 9 Befunde, alle schon vor dem Feature vorhanden.
+      - `buildx --check` ohne Warnungen (mit lokalem Test-Mirror).
+    - Frischer Build mit `--no-cache` für arm64 gegen den lokalen Test-Mirror (1:15 min) → `run.sh` grün (1:27 min):
+      - aarch64, gs 10.08.0, Odoo 17.0-20260908
+      - 18/18 Importe, `pip3 check` ok
+      - 148 Add-ons, keine `.git`-Einträge
+      - 36/36 Module, kein ERROR, 81 WARNING-Zeilen (wie Baseline)
+    - Gegenüber der Baseline unverändert: Add-on-Liste (148) und installierte Module (36).
+      Neu grün sind `pip3 check` (Schritt 1a) und die `.git`-Prüfung (Schritt 2).
+    - Aufgeräumt, alles in diesem Feature angelegt:
+      - Images: `tom-2-0-odoo-17-image:{baseline-arm64,tom232-arm64,ci-arm64,tom232-final}`, `postgres:15`, `registry:2`,
+        `hadolint/hadolint`, `rhysd/actionlint`.
+      - Container `tom232-test-registry` samt anonymem Volume, buildx-Builder `tom232-builder` samt State-Volume,
+        lokaler Build-Cache im Scratchpad.
+      - Keine Test-Container oder -Netze von `install.sh` übrig.
+      - Behalten: `tom-2-0-odoo-17-image:1904ba9-arm64` (Molecule-Szenario `gammadata17` im Infra-Repo) und alle Images,
+        die vorher schon da waren. Den Build-Cache des Standard-Builders habe ich nicht angefasst, weil er nicht eindeutig
+        diesem Feature zuzuordnen ist.
 
 ## Offene Punkte / Folgearbeiten (nicht im Scope)
 
