@@ -198,15 +198,20 @@
     - `concurrency` verhindert parallele Läufe.
     - Das Datum wird per `env` übergeben, nicht in das Skript interpoliert (Schutz vor Injection).
 
-- [ ] **5. Bootstrap des Mirrors (User-Aktion)**
+- [x] **5. Bootstrap des Mirrors (User-Aktion)** — *übersprungen auf Anweisung des Users (2026-10-21)*
   - Der User führt einmal lokal aus: `docker login ghcr.io` (Token mit `write:packages`), dann `scripts/mirror-odoo-base.sh --date 20260908`.
   - Danach prüft der User im UI Sichtbarkeit und Repo-Zugriff von `odoo-17-official-multiarch` (Entscheidung F2).
   - Prüfung durch Claude, nach dem Login: `imagetools inspect ghcr.io/mikrowerk/odoo-17-official-multiarch:20260908`
     zeigt `linux/amd64` + `linux/arm64`, und die Plattform-Digests sind gleich wie bei `odoo:17.0-20260908`.
   - Kein Commit, Ergebnis im Plan notieren.
   - Schritt 6 setzt diesen Schritt voraus.
+  - **Abweichung:**
+    - Übersprungen auf Anweisung des Users: Die Sichtbarkeit der Pakete ist gewährleistet.
+    - Ob `ghcr.io/mikrowerk/odoo-17-official-multiarch:20260908` schon existiert, habe ich nicht geprüft; lokal gibt es kein ghcr-Login.
+      Ohne diesen Tag schlägt der PR-Build fehl. Vor dem PR einmal `scripts/mirror-odoo-base.sh --date 20260908`
+      ausführen, falls noch nicht geschehen (siehe Runbook).
 
-- [ ] **6. Dockerfile auf den Multi-Arch-Mirror umstellen**
+- [x] **6. Dockerfile auf den Multi-Arch-Mirror umstellen**
   - Standardwert von `ARG BASE_IMAGE` wird `ghcr.io/mikrowerk/odoo-17-official-multiarch:20260908`.
   - Kommentar anpassen (kein `--build-arg` mehr nötig, die Plattform wählt BuildKit).
   - Die Stufe `gs-build` bleibt unverändert (multi-arch, nativ pro Runner).
@@ -217,6 +222,19 @@
     - Lokaler Build ohne `--build-arg` und ohne `--platform` auf dem Mac → arm64-Image.
     - `run.sh` grün, Add-on-Liste identisch zur Baseline.
   - Commit: `TOM-232: build on the multi-arch odoo base mirror`.
+  - **Ergebnis (2026-10-21):**
+    - `hadolint` (Docker-Image): 9 Befunde, alle schon vorher vorhanden. Neu ist keiner.
+    - `buildx --check` mit `BASE_IMAGE=localhost:5055/odoo-17-official-multiarch:20260908` (lokaler Test-Mirror aus Schritt 3,
+      gleiche Plattform-Manifeste wie der ghcr-Mirror) ohne Warnungen. Mit dem Standardwert bricht der Check ohne Login an
+      ghcr ab (403), wie erwartet.
+    - Build gegen den lokalen Test-Mirror **ohne `--platform`** auf dem Mac → arm64.
+      Die Labels `org.opencontainers.image.base.name` und `.source` sind gesetzt.
+    - `run.sh` vollständig grün: gs 10.08.0, `Odoo Server 17.0-20260908`, 148 Add-ons, 36/36 Module.
+  - **Abweichung:**
+    - Der lokale Build mit dem Standardwert des Dockerfiles war nicht möglich (kein ghcr-Login). Ersatz ist der Test-Mirror
+      in `localhost:5055`, eine 1:1-Kopie mit demselben Skript.
+    - Im pdfminer-Schritt aus 1a habe ich die Pipe `dpkg-query | cut` durch eine Parameter-Expansion mit Leer-Prüfung ersetzt.
+      Grund: hadolint DL4006; außerdem bricht der Schritt so bei leerer Version ab, statt `pdfminer.six-.egg-info` anzulegen.
 
 - [ ] **7. App-Workflow: Multi-Arch-Build mit Tests**
   - `.github/workflows/build_publish_image.yml` neu aufbauen.

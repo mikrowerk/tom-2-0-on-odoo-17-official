@@ -1,11 +1,11 @@
 # Copyright Gammadata GmbH. All Rights Reserved.
 # SPDX-License-Identifier: APACHE-2.0
 
-# Odoo base image. The default is the amd64 mirror used by CI. Local builds for other platforms use the
-# official multi-arch image of the same date (identical content for amd64), e.g. for Molecule tests on arm64:
-#   docker build --platform linux/arm64 --build-arg BASE_IMAGE=docker.io/library/odoo:17.0-20260908 \
-#     -t tom-2-0-odoo-17-image:<commit>-arm64 .
-ARG BASE_IMAGE=ghcr.io/mikrowerk/odoo-17-official-image-amd-64:20260908
+# Odoo base image: frozen multi-arch (linux/amd64, linux/arm64) mirror of docker.io/library/odoo:17.0-<date>,
+# created by scripts/mirror-odoo-base.sh (TOM-232). BuildKit picks the platform, so no --platform or
+# --build-arg is needed, also on Apple Silicon. To move to a newer Odoo 17 build, mirror the date first and
+# then change it here (see .features/.docs/base-image-update.md).
+ARG BASE_IMAGE=ghcr.io/mikrowerk/odoo-17-official-multiarch:20260908
 
 # --- Ghostscript 10.x for the PDF/A-3b conversion of reports (mikrowerk_report_pdfa3, TOM-201) ---
 # Artifex publishes no Linux binaries any more, so Ghostscript is built from the release source in a
@@ -33,6 +33,9 @@ RUN curl -fsSL -o /tmp/ghostscript.tar.gz \
 
 # FROM ghcr.io/mikrowerk/tom-2-0-odoo-17-image:6e22768
 FROM ${BASE_IMAGE}
+ARG BASE_IMAGE
+LABEL org.opencontainers.image.base.name="${BASE_IMAGE}" \
+      org.opencontainers.image.source="https://github.com/mikrowerk/tom-2-0-on-odoo-17-official"
 
 ARG ADDON_PATH="/mnt/extra-addons"
 
@@ -79,7 +82,7 @@ RUN apt-get update \
 # `pip3 check` fails with pip >= 24 (TOM-232). Repair the metadata only; skipped once the base image is fixed.
 RUN d=/usr/lib/python3/dist-packages \
     && if [ -d "$d/pdfminer.six-_VERSION_.egg-info" ]; then \
-        v="$(dpkg-query -W -f='${Version}' python3-pdfminer | cut -d+ -f1)" \
+        v="$(dpkg-query -W -f='${Version}' python3-pdfminer)" && v="${v%%+*}" && [ -n "$v" ] \
         && sed -i "s/^Version: -VERSION-\$/Version: ${v}/" "$d/pdfminer.six-_VERSION_.egg-info/PKG-INFO" \
         && mv "$d/pdfminer.six-_VERSION_.egg-info" "$d/pdfminer.six-${v}.egg-info"; \
     fi
