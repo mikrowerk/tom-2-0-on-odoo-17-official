@@ -97,6 +97,15 @@
       und das Token von 2026-10-20 ist aufgeräumt.
       Gleichwertig ist T3 in CI auf dem amd64-Runner gegen dieselbe `expected-addons.txt`.
       Zusätzlich wurde die Liste aus `COPY`-Zeilen und Submodulen gegengeprüft: 148 = 148.
+    - **Nachgeholt (2026-10-21, auf Anweisung des Users):**
+      - Login an ghcr.io mit den Pull-Zugangsdaten aus `saas_docker_compose_infa/ansible/.env.mgmt-srv`, in einem temporären
+        `DOCKER_CONFIG`, danach ausgeloggt und gelöscht.
+      - Das Dateisystem von `ghcr.io/mikrowerk/tom-2-0-odoo-17-image:1904ba9` (amd64, Einzel-Manifest, erstellt 2026-10-06)
+        per `crane export` gelistet, ohne den Container zu starten.
+      - Ergebnis: 148 Add-ons, **identisch** mit `expected-addons.txt`, also mit dem arm64-Build.
+        Das amd64-Image enthält `/mnt/extra-addons/.git`; das behebt Schritt 2.
+      - Nebenbefund: `ghcr.io/mikrowerk/odoo-17-official-multiarch` existiert für diesen Pull-User nicht
+        (`NAME_UNKNOWN`). Der Bootstrap aus Schritt 5 steht also noch aus, oder dem Pull-User fehlt der Lesezugriff.
     - `expected-addons.txt` hat 148 Einträge, kein `lib.sh`-Executable-Bit (wird nur gesourct).
 
 - [x] **1a. Metadaten von `python3-pdfminer` reparieren** (neu, Entscheidung 2026-10-21, siehe Baseline)
