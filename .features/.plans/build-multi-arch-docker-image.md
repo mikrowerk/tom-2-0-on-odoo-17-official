@@ -236,7 +236,7 @@
     - Im pdfminer-Schritt aus 1a habe ich die Pipe `dpkg-query | cut` durch eine Parameter-Expansion mit Leer-Prüfung ersetzt.
       Grund: hadolint DL4006; außerdem bricht der Schritt so bei leerer Version ab, statt `pdfminer.six-.egg-info` anzulegen.
 
-- [ ] **7. App-Workflow: Multi-Arch-Build mit Tests**
+- [x] **7. App-Workflow: Multi-Arch-Build mit Tests**
   - `.github/workflows/build_publish_image.yml` neu aufbauen.
   - Trigger: `push` auf `main` und `releases/**` sowie `pull_request`. `rc/**` entfällt.
   - Job `build` (Matrix, Runner `ubuntu-latest`/amd64 und `ubuntu-24.04-arm`/arm64):
@@ -263,6 +263,27 @@
     - Lokal simuliert: Build arm64 mit `--cache-to/--cache-from type=local`, dann `run.sh`.
     - Der echte CI-Lauf erfolgt erst im PR durch den User; siehe Schritt 9.
   - Commit: `TOM-232: build and test multi-arch image in CI on native runners`.
+  - **Ergebnis (2026-10-21):**
+    - `actionlint` über beide Workflows sauber.
+    - Zusätzliche SHAs, per `git ls-remote` aufgelöst:
+      - `docker/build-push-action` v7.4.0 `c3c9e263…`
+      - `docker/metadata-action` v6.2.0 `dc802804…`
+      - `actions/upload-artifact` v7.0.2 `cf430e03…`
+      - `actions/download-artifact` v8.0.2 `9000827c…`
+      - `actions/attest-build-provenance` v4.2.2 `4d101475…`
+    - Tag-Logik: `type=sha,prefix=,format=short`. `metadata-action` kürzt laut README per Standard auf 7 Zeichen
+      (`DOCKER_METADATA_SHORT_SHA_LENGTH`), passend zu `git rev-parse --short` (`79a7d39`). Der Tag `latest` bleibt.
+    - Lokale Simulation mit einem buildx-Builder vom Typ `docker-container`, Basis `odoo:17.0-20260908`, für arm64:
+      1. Build mit `--load` und `--cache-to type=local,mode=max` (2:03 min inkl. Ghostscript) → `run.sh` mit `EXPECTED_ARCH=arm64` grün.
+      2. Zweiter Build nur aus dem Cache mit `push-by-digest=true` in die Test-Registry: 3 s, alles CACHED.
+         Das Config-Digest des gepushten Images ist **identisch** mit dem getesteten Image (`sha256:886f9cf8…`).
+      3. `imagetools create` mit `latest` + Hash aus dem Digest ergibt einen Index.
+         T1 meldet arm64 ok und amd64 fehlt; erwartet, weil lokal nur arm64 gebaut werden kann.
+  - **Abweichung:**
+    - `provenance: false` bei den Builds pro Plattform. Die Attestation entsteht einmal für den finalen Index im `merge`-Job,
+      so enthalten die Plattform-Images keine eigenen Attestation-Manifeste.
+    - `concurrency` bricht ältere Läufe nur bei Pull Requests ab.
+    - Labels der `metadata-action` werden nicht an den Build gegeben. Die Herkunft steht in den Dockerfile-Labels und in der Attestation.
 
 - [ ] **8. Doku**
   - `CLAUDE.md`, Abschnitt „Image bauen“:
