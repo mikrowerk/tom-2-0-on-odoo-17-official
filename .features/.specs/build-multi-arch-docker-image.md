@@ -297,3 +297,11 @@ F4. **Der Paketname `ghcr.io/mikrowerk/odoo-17-official-image` ist schon belegt.
 - **Variante a:** Der Mirror heißt `ghcr.io/mikrowerk/odoo-17-official-multiarch:<datum>`. Das ersetzt den Namen aus Entscheidung 4.
   Das bestehende Paket `odoo-17-official-image` (`latest`, `97037c3`, `20260908`) bleibt unberührt, ebenso `...-amd-64`.
 - Keine Fragen mehr offen.
+
+## Entscheidung bei der Umsetzung (2026-10-21)
+
+- **`pip3 check` (T2):**
+  - Ist schon im heutigen Image rot, wegen der kaputten Metadaten von `python3-pdfminer` aus dem offiziellen Basis-Image
+    (Version `-VERSION-`).
+  - Der User hat entschieden, die Ursache im Dockerfile zu beheben. Die Metadaten werden repariert, der Code bleibt unverändert.
+  - Das ist eine bewusste Ausnahme von Entscheidung 17 (keine Änderung an pip-Paketen). Umsetzung: Plan-Schritt 1a.

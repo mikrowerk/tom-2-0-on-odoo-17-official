@@ -29,19 +29,48 @@
 
 ## Baseline
 
-(wird in Schritt 1 eingetragen)
+**2026-10-21:**
+- **Image:** Stand 3a65c85, lokal für arm64 gebaut:
+  `docker build --build-arg BASE_IMAGE=docker.io/library/odoo:17.0-20260908 -t tom-2-0-odoo-17-image:baseline-arm64 .`
+  Der Build war vollständig aus dem Cache des gleichen Stands vom 2026-10-20.
+- **Ergebnisse:**
+
+  | Test | Ergebnis |
+  |---|---|
+  | T2 `smoke.sh` | aarch64, gs 10.08.0, `Odoo Server 17.0-20260908`, alle 18 Python-Importe ok; **`pip3 check` rot** |
+  | T3 `addons.sh` | 148 Add-ons wie erwartet (Liste aus dem Image, identisch mit den `COPY`-Zeilen/Submodulen) |
+  | T4 `install.sh` | 36/36 Module installiert, Exit 0, kein ERROR/CRITICAL/Traceback, 81 WARNING-Zeilen, 1:24 min |
+  | T1 `manifest.sh` | gegen `odoo:17.0-20260908` grün (beide Plattformen) |
+
+- **Ursache `pip3 check`:** Das Ubuntu-Paket `python3-pdfminer` (20220319+dfsg-1) im offiziellen Basis-Image hat
+  kaputte Metadaten: Version `-VERSION-`, Verzeichnis `pdfminer.six-_VERSION_.egg-info`. pip 26 bricht daran ab.
+  Das offizielle Image selbst ist in `pip3 check` ebenfalls rot (zeep → platformdirs; im TOM-Image durch
+  additional-requirements behoben). Entscheidung des Users: die Ursache im Dockerfile beheben (neuer Schritt 1a).
+- **Negativtests, alle rot wie erwartet:**
+  - `document_url` aus der erwarteten Liste entfernt → T3 rot.
+  - `EXPECTED_GS_VERSION=10.07.0` → T2 rot. `EXPECTED_ARCH=amd64` auf dem arm64-Image → T2 rot.
+  - Unbekanntes Modul in einer Kopie der Modulliste → T4 rot (36/37). Odoo selbst endet hier mit Exit 0 und nur einer WARNING;
+    der Zähler fängt das ab.
+  - T1 gegen ein Einzel-Plattform-Manifest → rot.
+- **Lint:** `shellcheck -x tests/image/*.sh` sauber. Nach den Läufen sind keine Test-Container oder -Netze übrig.
 
 ## Schritte
 
-- [ ] **0. Vorbereitung**
+- [x] **0. Vorbereitung**
   - Cherry-pick 57e1332 (`ARG BASE_IMAGE`) von `feature/tom-231-arm64-base-image`.
   - Spec, Plan und die vom User gepflegte `CLAUDE.md` committen.
   - `git status` danach sauber.
   - Dateien: `Dockerfile`, `.features/.specs/build-multi-arch-docker-image.md`, `.features/.plans/build-multi-arch-docker-image.md`, `CLAUDE.md`.
   - Prüfung: `docker buildx build --check .` ohne Warnungen zu `BASE_IMAGE`; `git log` zeigt den Cherry-pick.
   - Commits: Cherry-pick mit Originalnachricht + `TOM-232: add spec and plan for multi-arch image`.
+  - **Abweichung:**
+    - Reihenfolge getauscht: zuerst der Spec/Plan-Commit (7ebfabe), dann der Cherry-pick (3a65c85).
+      Die gestagte `CLAUDE.md` hat den Cherry-pick blockiert.
+    - `docker buildx build --check .` braucht ein Login für den ghcr-Mirror. Geprüft wurde deshalb mit
+      `--build-arg BASE_IMAGE=docker.io/library/odoo:17.0-20260908`: keine Warnungen.
+    - Die Checkbox wurde mit dem Commit von Schritt 1 gesetzt.
 
-- [ ] **1. Regressions-Tests gegen den heutigen Stand (vor allen Änderungen)**
+- [x] **1. Regressions-Tests gegen den heutigen Stand (vor allen Änderungen)**
   - `tests/image/` anlegen:
     - Skripte: `lib.sh` (gemeinsame Funktionen: Image/Plattform-Parameter, Logprüfung), `smoke.sh` (T2), `addons.sh` (T3),
       `install.sh` (T4), `manifest.sh` (T1), `run.sh` (T2–T4 nacheinander, Abbruch beim ersten Fehler).
@@ -63,6 +92,24 @@
     - `shellcheck tests/image/*.sh` sauber.
   - Ergebnis unter „## Baseline“ mit Datum eintragen.
   - Commit: `TOM-232: add image tests (smoke, addons, install, manifest)`.
+  - **Abweichung:**
+    - Den T3-Vergleich mit dem amd64-CI-Image 1904ba9 per Export habe ich nicht gemacht: lokal gibt es kein ghcr-Login,
+      und das Token von 2026-10-20 ist aufgeräumt.
+      Gleichwertig ist T3 in CI auf dem amd64-Runner gegen dieselbe `expected-addons.txt`.
+      Zusätzlich wurde die Liste aus `COPY`-Zeilen und Submodulen gegengeprüft: 148 = 148.
+    - `expected-addons.txt` hat 148 Einträge, kein `lib.sh`-Executable-Bit (wird nur gesourct).
+
+- [ ] **1a. Metadaten von `python3-pdfminer` reparieren** (neu, Entscheidung 2026-10-21, siehe Baseline)
+  - Im Dockerfile, als root nach dem pip-Upgrade:
+    - Gibt es `pdfminer.six-_VERSION_.egg-info`, wird die Version aus `dpkg-query` (ohne `+dfsg…`) in `PKG-INFO` eingetragen
+      und das Verzeichnis umbenannt.
+    - Fehlt das Verzeichnis (spätere Basis-Images), passiert nichts.
+    - Der Code des Pakets bleibt unverändert.
+  - Dateien: `Dockerfile`.
+  - Prüfung:
+    - arm64-Neubau → `tests/image/run.sh` vollständig grün (`pip3 check`: „No broken requirements found.“).
+    - `pip3 show pdfminer.six` meldet 20220319. Add-on-Liste unverändert.
+  - Commit: `TOM-232: repair python3-pdfminer metadata so that pip check passes`.
 
 - [ ] **2. `.dockerignore`**
   - Hält `.git`, `.idea/`, `.features/`, `.claude/`, `**/.env`, `tests/` sowie die Laufzeitkonfiguration
