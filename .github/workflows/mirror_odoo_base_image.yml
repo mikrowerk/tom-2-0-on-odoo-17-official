@@ -1,0 +1,55 @@
+# Mirrors the official multi-arch Odoo 17 image (docker.io/library/odoo:17.0-YYYYMMDD) to
+# ghcr.io/mikrowerk/odoo-17-official-multiarch:YYYYMMDD as frozen base for the TOM image (TOM-232).
+# The logic lives in scripts/mirror-odoo-base.sh: existing tags are skipped, never overwritten.
+# workflow_dispatch and schedule only run from the default branch (main).
+
+name: Mirror official odoo 17 base image
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Upstream date YYYYMMDD (tag 17.0-YYYYMMDD); empty = the tag 17.0 currently points to'
+        required: false
+        default: ''
+  schedule:
+    - cron: '0 4 * * 1'   # Mondays 04:00 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-odoo-base-image
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    environment: github-build
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GIT_HUB_TOKEN }}
+
+      - name: Mirror the base image
+        env:
+          MIRROR_DATE: ${{ inputs.date }}
+        run: |
+          if [ -n "${MIRROR_DATE}" ]; then
+            scripts/mirror-odoo-base.sh --date "${MIRROR_DATE}"
+          else
+            scripts/mirror-odoo-base.sh
+          fi

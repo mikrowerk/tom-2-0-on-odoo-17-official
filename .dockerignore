@@ -1,0 +1,18 @@
+# Build context of the TOM image (TOM-232): the Dockerfile only copies the add-on submodules and
+# additional-requirements.txt. Keep repository metadata, docs, tests, deployment files and local
+# secrets out of the context (and out of the image, for the whole-submodule COPYs).
+.git
+**/.git
+.github/
+.idea/
+.claude/
+.features/
+tests/
+deployment/
+nginx-conf/
+nginx-conf-new/
+docker-compose.yaml
+odoo.conf
+*.sh
+**/.env
+**/.env.*

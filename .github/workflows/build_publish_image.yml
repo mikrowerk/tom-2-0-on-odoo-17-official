@@ -1,10 +1,8 @@
-# This workflow will upload a Python Package to PyPI when a release is created
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# Builds the TOM 2.0 image (Odoo 17) for linux/amd64 and linux/arm64 on native runners, tests each
+# platform with tests/image/run.sh and publishes the tags latest and <short commit hash> as one
+# manifest list (TOM-232). Pull requests are built and tested only, nothing is pushed.
+#
+# Pull requests from forks get no secrets: the submodule checkout fails there, which is accepted.
 
 name: Build odoo-tom-2-0-image on top of odoo official image
 
@@ -13,16 +11,103 @@ on:
     branches:
       - 'main'
       - 'releases/**'
-      - 'rc/**'
+  pull_request:
 
 permissions:
   contents: read
 
+env:
+  IMAGE: ghcr.io/mikrowerk/tom-2-0-odoo-17-image
+
+concurrency:
+  group: build-tom-image-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  build-push-tom-2-0-image:
+  build:
+    name: build (${{ matrix.arch }})
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    environment: github-build
+    permissions:
+      contents: read
+      packages: write   # pull the private base image mirror, push by digest
+
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          token: ${{ secrets.GIT_HUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Also for pull requests: the base image mirror on ghcr.io is private
+      - name: Log in to the Container registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GIT_HUB_TOKEN }}
+
+      - name: Build image for tests
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          provenance: false
+          tags: tom-2-0-odoo-17-image:ci-${{ matrix.arch }}
+          cache-from: type=gha,scope=tom-image-${{ matrix.arch }}
+          cache-to: type=gha,scope=tom-image-${{ matrix.arch }},mode=max
+
+      - name: Test image (smoke, add-ons, install)
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: tests/image/run.sh "tom-2-0-odoo-17-image:ci-${{ matrix.arch }}"
+
+      # Same build from the cache, pushed untagged; the tags are set in the merge job
+      - name: Push image by digest
+        id: push
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          provenance: false
+          cache-from: type=gha,scope=tom-image-${{ matrix.arch }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        if: github.event_name == 'push'
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          touch "${RUNNER_TEMP}/digests/${DIGEST#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digests-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    if: github.event_name == 'push'
+    needs: build
     runs-on: ubuntu-latest
     environment: github-build
-
     permissions:
       contents: read
       packages: write
@@ -30,41 +115,56 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout repository and submodules
-        id: checkout
-        uses: actions/checkout@v2
+      - name: Checkout repository (tests only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download digests
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          submodules: recursive
-          token: ${{ secrets.GIT_HUB_TOKEN }}
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
 
-      - id: commit
-        uses: prompt/actions-commit-hash@v3
-
-
-      - name: List directories
-        env:
-          COMMIT_HASH: ${{ steps.commit.outputs.short }}
-        run: |
-          ls -al .
-          echo "---------- commit hash -------------"
-          echo "$COMMIT_HASH"
-          echo "------------------------------------"
-
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Log in to the Container registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GIT_HUB_TOKEN }}
 
-      - name: Build and push Docker images
-        id: push
-        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
+      # latest and the short commit hash (7 characters, as before)
+      - name: Image tags
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          context: .
-          push: true
+          images: ${{ env.IMAGE }}
           tags: |
-            ghcr.io/mikrowerk/tom-2-0-odoo-17-image:latest
-            ghcr.io/mikrowerk/tom-2-0-odoo-17-image:rc-03-2025
-            ghcr.io/mikrowerk/tom-2-0-odoo-17-image:${{ steps.commit.outputs.short }}
+            type=raw,value=latest
+            type=sha,prefix=,format=short
+
+      - name: Create manifest list and push tags
+        id: manifest
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          # shellcheck disable=SC2046  # one argument per tag and digest
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<<"${DOCKER_METADATA_OUTPUT_JSON}") \
+            $(printf "${IMAGE}@sha256:%s " *)
+          digest="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{json .Manifest}}' | jq -r .digest)"
+          echo "digest=${digest}" >>"${GITHUB_OUTPUT}"
+          docker buildx imagetools inspect "${IMAGE}:${VERSION}"
+
+      - name: Test manifest list (both platforms)
+        run: tests/image/manifest.sh "${IMAGE}:${{ steps.meta.outputs.version }}"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          push-to-registry: true

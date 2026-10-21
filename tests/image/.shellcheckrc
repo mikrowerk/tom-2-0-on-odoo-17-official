@@ -1,0 +1,3 @@
+# Resolve "source lib.sh" relative to the script, whatever the working directory
+source-path=SCRIPTDIR
+external-sources=true
