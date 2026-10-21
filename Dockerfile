@@ -75,6 +75,14 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-cairo \
     && rm -rf /var/lib/apt/lists/* \
     && pip3 install --no-cache-dir --upgrade pip
+# The Ubuntu package python3-pdfminer of the base image ships broken metadata (version "-VERSION-"), so
+# `pip3 check` fails with pip >= 24 (TOM-232). Repair the metadata only; skipped once the base image is fixed.
+RUN d=/usr/lib/python3/dist-packages \
+    && if [ -d "$d/pdfminer.six-_VERSION_.egg-info" ]; then \
+        v="$(dpkg-query -W -f='${Version}' python3-pdfminer | cut -d+ -f1)" \
+        && sed -i "s/^Version: -VERSION-\$/Version: ${v}/" "$d/pdfminer.six-_VERSION_.egg-info/PKG-INFO" \
+        && mv "$d/pdfminer.six-_VERSION_.egg-info" "$d/pdfminer.six-${v}.egg-info"; \
+    fi
 COPY additional-requirements.txt /tmp/additional-requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/additional-requirements.txt
 RUN pip3 install "pyOpenSSL~=22.0.0" "cryptography~=38.0.0"

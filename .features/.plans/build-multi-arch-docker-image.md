@@ -99,7 +99,7 @@
       Zusätzlich wurde die Liste aus `COPY`-Zeilen und Submodulen gegengeprüft: 148 = 148.
     - `expected-addons.txt` hat 148 Einträge, kein `lib.sh`-Executable-Bit (wird nur gesourct).
 
-- [ ] **1a. Metadaten von `python3-pdfminer` reparieren** (neu, Entscheidung 2026-10-21, siehe Baseline)
+- [x] **1a. Metadaten von `python3-pdfminer` reparieren** (neu, Entscheidung 2026-10-21, siehe Baseline)
   - Im Dockerfile, als root nach dem pip-Upgrade:
     - Gibt es `pdfminer.six-_VERSION_.egg-info`, wird die Version aus `dpkg-query` (ohne `+dfsg…`) in `PKG-INFO` eingetragen
       und das Verzeichnis umbenannt.
@@ -110,6 +110,11 @@
     - arm64-Neubau → `tests/image/run.sh` vollständig grün (`pip3 check`: „No broken requirements found.“).
     - `pip3 show pdfminer.six` meldet 20220319. Add-on-Liste unverändert.
   - Commit: `TOM-232: repair python3-pdfminer metadata so that pip check passes`.
+  - **Ergebnis (2026-10-21):**
+    - `buildx --check` ohne Warnungen.
+    - arm64-Build `tom-2-0-odoo-17-image:tom232-arm64`: `run.sh` vollständig grün.
+      `pip3 check` meldet „No broken requirements found“, `pip3 show pdfminer.six` meldet 20220319.
+    - 148 Add-ons, 36/36 Module installiert.
 
 - [ ] **2. `.dockerignore`**
   - Hält `.git`, `.idea/`, `.features/`, `.claude/`, `**/.env`, `tests/` sowie die Laufzeitkonfiguration
